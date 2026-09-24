@@ -5,6 +5,9 @@ export type LocalIncidentEvent = {
   status: string;
   label: string;
   createdAt: string;
+  actor?: "citizen" | "dispatcher" | "system";
+  previousValue?: string | null;
+  newValue?: string | null;
 };
 
 export type LocalIncident = {
@@ -46,7 +49,10 @@ export function loadLocalIncidents(user: LocalUser | null): LocalIncident[] {
     if (!raw) return [];
     return (JSON.parse(raw) as LocalIncident[]).map(incident => ({
       ...incident,
-      events: incident.events ?? [{ id: `${incident.id}-submitted`, status: "submitted", label: "Report submitted", createdAt: incident.createdAt }],
+      events: (incident.events ?? [{ id: `${incident.id}-submitted`, status: "submitted", label: "Report submitted", createdAt: incident.createdAt, actor: "citizen", previousValue: null, newValue: "submitted" }]).map(event => ({
+        ...event,
+        actor: event.actor ?? "system",
+      })),
     }));
   } catch {
     return [];
@@ -76,7 +82,7 @@ export function createLocalIncident(user: LocalUser, input: {
     assignedOrganizationId: null,
     createdAt,
     version: 1,
-    events: [{ id: `${Date.now()}-submitted`, status: "submitted", label: "Report submitted", createdAt }],
+    events: [{ id: `${Date.now()}-submitted`, status: "submitted", label: "Report submitted", createdAt, actor: "citizen", previousValue: null, newValue: "submitted" }],
   };
   localStorage.setItem(storageKey(user), JSON.stringify([incident, ...current]));
   return incident;
@@ -94,7 +100,7 @@ export function advanceLocalIncident(user: LocalUser, incidentId: number): Local
     ...current,
     status: next.status,
     version: current.version + 1,
-    events: [...current.events, { id: `${current.id}-${next.status}-${Date.now()}`, status: next.status, label: next.label, createdAt: now }],
+    events: [...current.events, { id: `${current.id}-${next.status}-${Date.now()}`, status: next.status, label: next.label, createdAt: now, actor: "citizen", previousValue: current.status, newValue: next.status }],
   };
   localStorage.setItem(storageKey(user), JSON.stringify(incidents.map(incident => incident.id === incidentId ? updated : incident)));
   return updated;

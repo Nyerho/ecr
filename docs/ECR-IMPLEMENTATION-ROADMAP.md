@@ -16,8 +16,8 @@ The current prototype is not production-safe. Passwords are stored locally for d
 |---|---|---|---|
 | 1. Product and pilot decisions | Confirm geography, partners, categories, ownership, routing, status labels, privacy, and notification policy | Sections 7, 11, 20, 21 | Required before live pilot |
 | 2. Citizen prototype | Validate the report flow with representative users | C-01 through C-12 | Complete locally |
-| 3. Dispatcher prototype | Validate queue, triage, routing, assignment, status updates, and audit interactions | O-01 through O-07 | In progress locally |
-| 4. Shared local workflow hardening | Add reliable shared prototype storage, retry behavior, role boundaries, seeded agencies, and failure-state scenarios | C-12, O-10, reliability requirements | Next |
+| 3. Dispatcher prototype | Validate queue, triage, routing, assignment, status updates, and audit interactions | O-01 through O-07 | Complete locally |
+| 4. Shared local workflow hardening | Add reliable shared prototype storage, retry behavior, role boundaries, seeded agencies, and failure-state scenarios | C-12, O-10, reliability requirements | In progress locally |
 | 5. Firestore data foundation | Replace browser storage with Firestore collections, rules, indexes, and server-side validation | Sections 10, 11, 14 | Next major backend stage |
 | 6. Production identity and authorization | Add Firebase Authentication, verified citizen identity, dispatcher/responder accounts, MFA, role and organization claims, recovery, and session controls | A-01 through A-05 | Required before controlled pilot |
 | 7. Operational dashboards | Convert the prototype dispatcher view into a persistent role-aware operations console with agency and responder views | O-01 through O-11 | MVP build |
@@ -38,7 +38,7 @@ The current prototype is not production-safe. Passwords are stored locally for d
 
 The next implementation sequence should be:
 
-1. Complete and verify the local dispatcher console, including shared incident discovery across citizen accounts and full queue action behavior.
+1. Complete and verify the local dispatcher console, including shared incident discovery across citizen accounts and full queue action behavior. **Completed:** the console now supports status, category, priority, and jurisdiction filtering, structured dispatcher audit events, and stale-update protection.
 2. Add explicit failure-state demonstrations for denied location, duplicate submission, stale update, and unavailable notification.
 3. Add local role fixtures for citizen, dispatcher, agency coordinator, responder, and administrator so the permission model can be tested before Firebase claims are introduced.
 4. Produce the implementation brief containing the approved screens, API contracts, Firestore entities, permission matrix, routing configuration, test scenarios, and pilot runbook skeleton.

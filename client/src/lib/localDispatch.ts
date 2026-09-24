@@ -27,7 +27,10 @@ function normalize(incident: LocalIncident): LocalIncident {
     priority: incident.priority || "medium",
     jurisdiction: incident.jurisdiction || "Pilot area",
     assignedOrganizationId: incident.assignedOrganizationId ?? null,
-    events: incident.events ?? [{ id: `${incident.id}-submitted`, status: "submitted", label: "Report submitted", createdAt: incident.createdAt }],
+    events: (incident.events ?? [{ id: `${incident.id}-submitted`, status: "submitted", label: "Report submitted", createdAt: incident.createdAt, actor: "citizen", previousValue: null, newValue: "submitted" }]).map(event => ({
+      ...event,
+      actor: event.actor ?? "system",
+    })),
   };
 }
 
@@ -46,7 +49,7 @@ export function loadAllLocalIncidents(): LocalIncident[] {
   return incidents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export function updateSharedLocalIncident(id: number, changes: Partial<Pick<LocalIncident, "status" | "priority" | "jurisdiction" | "assignedOrganizationId">> & { action?: string }): LocalIncident | null {
+export function updateSharedLocalIncident(id: number, changes: Partial<Pick<LocalIncident, "status" | "priority" | "jurisdiction" | "assignedOrganizationId">> & { action?: string; actor?: string; expectedVersion?: number }): LocalIncident | null {
   for (let index = 0; index < localStorage.length; index += 1) {
     const key = localStorage.key(index);
     if (!key?.startsWith(INCIDENT_PREFIX)) continue;
@@ -54,16 +57,21 @@ export function updateSharedLocalIncident(id: number, changes: Partial<Pick<Loca
       const incidents = (JSON.parse(localStorage.getItem(key) ?? "[]") as LocalIncident[]).map(normalize);
       const current = incidents.find(incident => incident.id === id);
       if (!current) continue;
+      if (changes.expectedVersion !== undefined && current.version !== changes.expectedVersion) return null;
       const now = new Date().toISOString();
-      const nextStatus = changes.status ?? current.status;
+      const { action: requestedAction, actor: _actor, expectedVersion: _expectedVersion, ...fieldChanges } = changes;
+      const nextStatus = fieldChanges.status ?? current.status;
       const statusChanged = nextStatus !== current.status;
-      const action = changes.action ?? (statusChanged ? `Status changed to ${nextStatus}` : "Incident updated");
+      const action = requestedAction ?? (statusChanged ? `Status changed to ${nextStatus}` : "Incident updated");
+      const changedField = fieldChanges.status !== undefined ? "status" : fieldChanges.priority !== undefined ? "priority" : fieldChanges.jurisdiction !== undefined ? "jurisdiction" : "assignedOrganizationId";
+      const previousValue = String(current[changedField] ?? "");
+      const newValue = String(fieldChanges[changedField] ?? current[changedField] ?? "");
       const updated: LocalIncident = {
         ...current,
-        ...changes,
+        ...fieldChanges,
         status: nextStatus,
         version: current.version + 1,
-        events: [...current.events, { id: `${id}-dispatch-${Date.now()}`, status: nextStatus, label: action, createdAt: now }],
+        events: [...current.events, { id: `${id}-dispatch-${Date.now()}`, status: nextStatus, label: action, createdAt: now, actor: "dispatcher", previousValue, newValue }],
       };
       localStorage.setItem(key, JSON.stringify(incidents.map(incident => incident.id === id ? updated : incident)));
       return updated;
