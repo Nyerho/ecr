@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 
-const BEACON_IMAGE = "/manus-storage/ecr-3d-response-beacon_2e7ae4cf.png";
+const BEACON_IMAGE = "/ecr-response-beacon.png";
 
 const categories = [
   { key: "medical", label: "Medical", detail: "Illness, injury or ambulance", icon: HeartPulse, tone: "rose" },

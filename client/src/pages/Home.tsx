@@ -8,7 +8,7 @@ const pillars = [
   { icon: Radio, title: "A connected response", text: "Keep the report, the status trail, and the response team in one secure thread." },
 ];
 
-const BEACON_IMAGE = "/manus-storage/ecr-3d-response-beacon_2e7ae4cf.png";
+const BEACON_IMAGE = "/ecr-response-beacon.png";
 
 const steps = [
   ["01", "Report", "Choose the emergency type and tell ECR what is happening."],
