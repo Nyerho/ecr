@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1790158688128,
+      "tag": "0000_huge_zarda",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1790158788083,
+      "tag": "0001_fixed_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1790158862761,
+      "tag": "0002_salty_namor",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1790160619923,
+      "tag": "0003_daffy_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1790161760211,
+      "tag": "0004_normal_ulik",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1790162174487,
+      "tag": "0005_romantic_miek",
+      "breakpoints": true
+    }
+  ]
+}

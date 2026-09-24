@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f8f7;
+  --foreground: #0f2422;
+  --card: #ffffff;
+  --card-foreground: #0f2422;
+  --border: #dfe9e5;
+  --input: #dfe9e5;
+  --primary: #063f3d;
+  --primary-foreground: #ffffff;
+  --ring: #10b981;
+  --radius: 1rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--background); }
+body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+:focus-visible { outline: 3px solid rgba(16, 185, 129, 0.45); outline-offset: 3px; }
+::selection { background: rgba(16, 185, 129, 0.2); }
+
+.hero-surface { isolation: isolate; }
+.hero-grid {
+  background-image: linear-gradient(rgba(167, 243, 208, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 243, 208, 0.09) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 58% 42%, black, transparent 72%);
+}
+.glass-card { box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 22px 80px rgba(3, 38, 36, 0.16); }
+.glass-tile { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 30px rgba(6, 63, 61, 0.05); }
+.icon-orb { box-shadow: inset 0 1px 0 rgba(255,255,255,0.78), 0 7px 18px rgba(6,63,61,0.08); transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out); }
+.glass-tile:hover .icon-orb, .brand-mark:hover, button:hover .icon-orb { transform: translateY(-2px) rotate(-3deg) scale(1.04); box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 12px 24px rgba(6,63,61,0.12); }
+
+.hero-beacon { animation: beaconFloat 7s ease-in-out infinite; transform-origin: 50% 70%; }
+.beacon-halo { animation: haloPulse 4s ease-in-out infinite; box-shadow: 0 0 80px rgba(52, 211, 153, 0.14), inset 0 0 60px rgba(103, 232, 249, 0.08); }
+.glass-particle { animation: particleFloat 4.5s ease-in-out infinite; box-shadow: 0 0 20px rgba(167, 243, 208, 0.8); }
+.alert-bell { animation: alertPulse 1.25s ease-in-out infinite; }
+.alert-banner { animation: alertIn 220ms var(--ease-out) both; }
+
+.operations-surface { background: radial-gradient(circle at 15% 0%, rgba(167,243,208,0.22), transparent 30%), linear-gradient(180deg, #f7fbfa, #eef6f3); }
+
+@keyframes beaconFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+  50% { transform: translate3d(0, -12px, 0) rotate(3deg); }
+}
+@keyframes haloPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.55; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+}
+@keyframes particleFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.55; }
+  50% { transform: translate3d(12px, -18px, 0); opacity: 1; }
+}
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.2); }
+  50% { box-shadow: 0 0 0 10px rgba(244,63,94,0); }
+}
+@keyframes alertIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button, a { transition: transform 160ms var(--ease-out), background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+  button:active { transform: scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
