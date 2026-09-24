@@ -13,6 +13,7 @@ export type LocalIncident = {
   category: string;
   status: string;
   priority: string;
+  jurisdiction?: string;
   description: string;
   locationLabel: string | null;
   reporterPhone: string | null;
@@ -67,6 +68,7 @@ export function createLocalIncident(user: LocalUser, input: {
     category: input.category,
     status: "submitted",
     priority: "medium",
+    jurisdiction: "Pilot area",
     description: input.description,
     locationLabel: input.locationLabel || null,
     reporterPhone: input.reporterPhone || null,
