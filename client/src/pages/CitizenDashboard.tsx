@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { createLocalIncident, loadLocalIncidents, type LocalIncident } from "@/lib/localIncidents";
+import { advanceLocalIncident, createLocalIncident, getNextLocalStatus, loadLocalIncidents, type LocalIncident } from "@/lib/localIncidents";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -62,6 +62,7 @@ type IncidentCard = {
   assignedOrganizationId: number | null;
   createdAt: Date;
   version: number;
+  events?: LocalIncident["events"];
 };
 
 function toIncidentCard(incident: LocalIncident): IncidentCard {
@@ -177,6 +178,7 @@ export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
   const [localIncidents, setLocalIncidents] = useState<IncidentCard[]>(() => loadLocalIncidents(user).map(toIncidentCard));
   const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
+  const [localLifecycleMessage, setLocalLifecycleMessage] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportStep, setReportStep] = useState<"category" | "details" | "location" | "review">("category");
@@ -338,6 +340,14 @@ export default function Home() {
     }
   }
 
+  function advanceLocalReport(incidentId: number) {
+    if (!user) return;
+    const updated = advanceLocalIncident(user, incidentId);
+    if (!updated) return;
+    setLocalIncidents(current => current.map(incident => incident.id === incidentId ? toIncidentCard(updated) : incident));
+    setLocalLifecycleMessage(`${updated.publicReference} moved to ${statusLabels[updated.status as Status] ?? updated.status}.`);
+  }
+
   function dismissAlerts() {
     setNewIncidentIds([]);
   }
@@ -396,6 +406,14 @@ export default function Home() {
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14"><div className="flex items-end justify-between"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Your incident history</p><h2 className="mt-2 text-2xl font-black tracking-tight">Track your reports</h2></div>{isAuthenticated && <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">{mine.data?.length ?? 0} reports</span>}</div>{!isAuthenticated ? <div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center"><p className="text-sm font-black">Sign in to view your reports</p><p className="mt-1 text-sm text-slate-500">Your incident history is private and tied to your account.</p><Button onClick={() => startLogin()} className="mt-5 rounded-xl bg-[#063f3d]">Sign in securely</Button></div> : <div className="mt-5 grid gap-3">{mine.isLoading ? <div className="rounded-3xl bg-white p-8 text-center text-sm text-slate-500">Loading your reports…</div> : mine.data?.length ? mine.data.slice(0, 5).map(incident => <div key={incident.id} className="glass-tile flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-start gap-4"><span className="icon-orb grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-600"><Siren size={18} /></span><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black capitalize">{incident.category.replaceAll("_", " ")}</p><StatusPill status={incident.status as Status} /></div><p className="mt-1 text-xs text-slate-500">{incident.publicReference} · Reported {formatTime(incident.createdAt)}</p><p className="mt-2 max-w-xl text-sm text-slate-600">{incident.description}</p></div></div><span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">Priority: <span className="capitalize text-slate-700">{incident.priority}</span></span></div>) : <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No reports yet. If something is happening, start with the emergency button above.</div>}</div>}</section>
         </main>
       )}
+
+          <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8 lg:pb-14">
+            <div className="rounded-3xl border border-cyan-100 bg-cyan-50/60 p-5 sm:p-6">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Local dispatcher preview</p><h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">Test the report-to-resolution loop</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Advance a local report through the PRD status model while Firestore and the dispatcher API are still being prepared. Every transition is retained in this browser timeline.</p></div><span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-cyan-800 ring-1 ring-cyan-100">Prototype only</span></div>
+              {localLifecycleMessage && <p role="status" className="mt-4 rounded-xl bg-white px-4 py-3 text-sm font-bold text-emerald-800 ring-1 ring-emerald-100">{localLifecycleMessage}</p>}
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">{localIncidents.slice(0, 4).map(incident => <div key={`lifecycle-${incident.id}`} className="rounded-2xl border border-white bg-white/80 p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black capitalize">{incident.category.replaceAll("_", " ")}</p><p className="mt-1 text-xs text-slate-500">{incident.publicReference} · {statusLabels[incident.status as Status] ?? incident.status}</p></div><button disabled={!getNextLocalStatus(incident.status)} onClick={() => advanceLocalReport(incident.id)} className="rounded-xl bg-[#063f3d] px-3 py-2 text-[11px] font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{getNextLocalStatus(incident.status) ? `Advance to ${getNextLocalStatus(incident.status)}` : "Resolved"}</button></div><div className="mt-4 space-y-2">{(incident.events ?? []).map((event, index) => <div key={event.id} className="flex items-start gap-3 text-xs"><span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${index === (incident.events ?? []).length - 1 ? "bg-emerald-500" : "bg-slate-300"}`} /><div><p className={`font-bold ${index === (incident.events ?? []).length - 1 ? "text-emerald-800" : "text-slate-600"}`}>{event.label}</p><p className="text-slate-400">{formatTime(event.createdAt)}</p></div></div>)}</div></div>)}</div>
+            </div>
+          </section>
 
       <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"><span>Emergency Community Response · Pilot interface</span><span className="inline-flex items-center gap-2"><LockKeyhole size={13} /> Do not delay calling official emergency services</span></div></footer>
 
