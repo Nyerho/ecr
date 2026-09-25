@@ -6,9 +6,9 @@ This roadmap converts the ECR Pilot MVP PRD into an ordered implementation plan.
 
 ## Current baseline
 
-The completed prototype includes the landing page, local citizen registration and sign-in, local session handling, mobile-first incident reporting, category selection, structured details, manual or device-assisted location, report review, durable local references, citizen status timelines, a local dispatcher queue, filtering, incident detail review, priority changes, organization routing, status transitions, and local audit-style events. Vercel is configured to publish `dist/public` rather than the bundled server output.
+The completed prototype includes the landing page, local citizen registration and sign-in, local session handling, mobile-first incident reporting, category selection, structured details, manual or device-assisted location, report review, optional mobile camera/gallery photo selection, IndexedDB photo blobs and local dispatcher previews, durable local references, citizen status timelines, a local dispatcher queue, filtering, incident detail review, priority changes, organization routing, status transitions, and local audit-style events. Vercel is configured to publish `dist/public` rather than the bundled server output.
 
-The current prototype is not production-safe. Passwords are stored locally for demonstration, the dispatcher access is a local prototype switch, browser storage is not shared across devices, and no real notification, Firestore, MFA, or operational integration exists yet.
+The current prototype is not production-safe. Passwords are stored locally for demonstration, the dispatcher access is a local prototype switch, browser storage and photo files are not shared across devices, photos have no server-side access control or retention, and no real notification, Firestore, MFA, or operational integration exists yet. Do not use this prototype for real emergency response or sensitive evidence.
 
 ## Delivery stages
 
@@ -24,7 +24,7 @@ The current prototype is not production-safe. Passwords are stored locally for d
 | 8. Routing and jurisdiction | Implement pilot geography boundaries, agency capability, availability, routing rules, escalation, and manual override audit | O-04, O-05 | MVP build |
 | 9. Notifications | Add in-app notifications first, then push delivery and explicitly documented SMS fallback or integration | N-01 through N-05 | MVP build |
 | 10. Location and mapping | Add consent state, accuracy, normalized address, map display, location correction, jurisdiction lookup, and restricted precision display | C-04, C-05, O-08 | MVP build |
-| 11. Attachments and media safety | Add optional photo/video upload, size limits, malware/integrity checks, private storage, access control, and retention policy | C-06, A-06 | Should-have / pilot decision |
+| 11. Attachments and media safety | Add optional photo/video upload, size limits, malware/integrity checks, private storage, access control, and retention policy | C-06, A-06 | Local photo UX only; secure server media remains required before beta |
 | 12. Reliability and abuse controls | Add idempotent submission, retry-safe writes, duplicate detection, rate limits, spam controls, stale-update protection, outage states, and observability | C-12, A-05, Section 15 | Required before pilot |
 | 13. Audit, privacy, and retention | Centralize sensitive-read, assignment, status, export, authentication, administrative, and deletion events; implement retention and access review | A-04, Sections 13 and 17 | Required before pilot |
 | 14. Operator-assisted reporting | Add an authorized operator workflow for reports created on behalf of callers, with source and consent metadata | O-09 and Journey 8.5 | Pilot decision |
@@ -59,3 +59,5 @@ Production deployment additionally requires confirmation from the pilot geograph
 ## Product decisions still required
 
 The PRD leaves several decisions open: the pilot geography, named organizations, official operating owner, final categories and category questions, citizen verification method, mobile-only versus citizen web scope, notification provider and SMS model, jurisdiction and routing rules, responder responsibilities, data retention and consent policy, USSD/SMS scope, service-level targets, and escalation conditions. These decisions should be recorded before Firestore rules, routing logic, and operational runbooks are finalized.
+
+For an ordered gate-by-gate view of remaining work, see the [ECR Beta Readiness Checklist](./BETA-READINESS-CHECKLIST.md). The local photo picker in this branch is a workflow prototype only; private shared media storage and server-enforced permissions remain required before any beta involving real users or evidence.
