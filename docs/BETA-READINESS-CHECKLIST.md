@@ -4,6 +4,8 @@
 
 ECR is still a **local-first prototype**, not a beta system for real emergency reports. This change adds optional camera/gallery selection, image type/count/size limits, IndexedDB blob storage, and a dispatcher gallery for testing in the same browser profile. The image blobs and incident records do **not** sync between devices, are not held in private server storage, and do not have production access controls or retention. Local sign-in and the dispatcher access switch are also demonstration-only. Do not use the current prototype for actual emergency operations or sensitive evidence.
 
+The consolidated [ECR Pilot MVP PRD](./ECR-PILOT-MVP-PRD.md) is the source for the target workflows and acceptance criteria. The community-help channel described there remains proposed and is not implemented.
+
 A beta gate means a small, named group can test the actual shared application against a real backend under documented supervision. It does not mean the service is ready to replace official emergency channels.
 
 ## Remaining work, in order
@@ -32,7 +34,7 @@ A beta gate means a small, named group can test the actual shared application ag
 ### 3. Move incidents and workflow state to the shared backend
 
 - [ ] Select and provision the production database and environments; keep development, staging, and pilot data isolated.
-- [ ] Finalize schemas for users, organizations, jurisdictions, incidents, assignments, events, idempotency keys, notifications, and audit logs.
+- [ ] Finalize schemas for users, organizations, jurisdictions, incidents, assignments, events, idempotency keys, notifications, and audit logs. If community chat is enabled, include scoped posts, replies, content reports, and user blocks.
 - [ ] Move report creation, dispatcher updates, assignment, and status transitions behind server-authorized operations and atomic/idempotent writes.
 - [ ] Add server-side validation, optimistic concurrency, duplicate-report handling, ownership checks, and safe errors for outages.
 - [ ] Migrate local prototype records only if they are needed, with explicit user/owner approval and a tested rollback plan.
