@@ -14,6 +14,7 @@ A beta gate means a small, named group can test the actual shared application ag
 - [ ] Select the geography, participating response organizations, coverage hours, capabilities, and escalation contacts.
 - [ ] Agree the report categories and required category-specific questions, especially missing-person and injury workflows.
 - [ ] Define who monitors the queue, response expectations, hand-offs, fallback procedures, and what happens when no responder accepts.
+- [ ] If community emergency chat is approved for the pilot, define eligible users and jurisdictions, approximate-location visibility, moderation coverage, message retention, and outage behavior.
 - [ ] Confirm that all screens keep directing people facing immediate danger to official emergency services.
 
 **Exit condition:** The pilot boundaries, contacts, categories, roles, and operating procedures are written down and approved by participating organizations.
@@ -54,11 +55,12 @@ A beta gate means a small, named group can test the actual shared application ag
 
 - [ ] Replace the local dispatcher page with a persistent role-aware operations console and organization/responder views.
 - [ ] Confirm jurisdiction and capability-based routing, availability, manual overrides, assignment/accept/decline flows, and escalation.
+- [ ] If approved for beta, implement community emergency-help posts and jurisdiction-limited reply threads with immediate publication, reporting/blocking controls, rate limits, and staffed moderation. Keep this channel separate from official reports and dispatch status.
 - [ ] Add persistent in-app notifications and an agreed push/SMS fallback only after delivery owners and content limits are approved.
 - [ ] Make delivery state, retry behavior, provider outage, acknowledgement, and duplicate notifications visible and auditable.
 - [ ] Avoid placing unnecessary medical, identity, or precise-location details in lock-screen or SMS messages.
 
-**Exit condition:** Dispatchers can operate the queue end-to-end and know when an assignment or notification has failed or is awaiting acknowledgement.
+**Exit condition:** Dispatchers can operate the queue end-to-end and know when an assignment or notification has failed or is awaiting acknowledgement. If community chat is enabled, moderators can review reports and users cannot mistake a community message for an official incident or an agency response.
 
 ### 6. Finish location, reliability, and abuse protections
 
@@ -83,7 +85,7 @@ A beta gate means a small, named group can test the actual shared application ag
 ### 8. Run staging acceptance and supervised beta rehearsal
 
 - [ ] Seed synthetic test users, agencies, incidents, missing-person cases, scene photos, and injury-photo cases; keep real personal data out of test fixtures.
-- [ ] Execute the full acceptance matrix on supported Android and iOS devices and desktop dispatch stations, including camera capture, gallery selection, corrupt/oversized files, upload retry, and access-denial tests.
+- [ ] Execute the acceptance scenarios on supported Android and iOS devices and desktop dispatch stations, including camera capture, gallery selection, media failures, access-denial tests, and (if enabled) community-chat separation, blocking, moderation, and cross-jurisdiction denial.
 - [ ] Run two-device and multi-role drills from citizen report through dispatcher acknowledgement, agency acceptance/decline, status updates, and citizen tracking.
 - [ ] Load-test the expected pilot volumes, attachment bandwidth, burst traffic, and outage recovery; verify alerting and restore procedures.
 - [ ] Train operators and beta testers; publish a clear feedback route and a known-issues list.
@@ -98,7 +100,7 @@ A beta gate means a small, named group can test the actual shared application ag
 - [ ] Review access logs, failed submissions/uploads, acknowledgement times, unresolved reports, complaints, and deletion requests on a fixed cadence.
 - [ ] Triage defects promptly, pause expansion on any severe issue, and record decisions and outcomes before widening the cohort.
 
-**Beta start gate:** Steps 1–8 are complete and approved. The local photo prototype alone does not satisfy the shared-storage or security gate.
+**Beta start gate:** Steps 1–8 are complete and approved. Any beta community-chat launch must also have approved moderation staffing and policies. The local photo prototype alone does not satisfy the shared-storage or security gate.
 
 ## This change's contribution
 
