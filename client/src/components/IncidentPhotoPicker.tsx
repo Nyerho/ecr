@@ -72,7 +72,8 @@ export default function IncidentPhotoPicker({
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-cyan-800"><Images size={18} /></span>
         <div>
-          <p className="text-sm font-black text-cyan-950">Add photos (optional)</p>
+          <p className="text-sm font-black text-cyan-950">Add photos (optional for every report)</p>
+          <p className="mt-1 text-xs font-semibold text-cyan-950/80">You can skip photos and send any report without an image.</p>
           <p className="mt-1 text-xs leading-5 text-cyan-900/75">
             {category === "missing_person"
               ? "A clear, recent photo of the missing person can help identify them. You can also add a safe scene or landmark photo."
@@ -89,8 +90,8 @@ export default function IncidentPhotoPicker({
       </label>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <button type="button" disabled={!remainingSlots} onClick={() => choose(kind, "camera")} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#063f3d] px-3 py-3 text-xs font-black text-white hover:bg-[#075b55] disabled:cursor-not-allowed disabled:opacity-50"><Camera size={16} /> Take photo with camera</button>
-        <button type="button" disabled={!remainingSlots} onClick={() => choose(kind, "gallery")} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 text-xs font-black text-slate-700 ring-1 ring-slate-200 hover:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"><ImagePlus size={16} /> Choose from photos</button>
+        <button type="button" disabled={!remainingSlots} onClick={() => choose(kind, "camera")} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#063f3d] px-4 py-3.5 text-sm font-black text-white hover:bg-[#075b55] disabled:cursor-not-allowed disabled:opacity-50"><Camera size={17} /> Take a photo</button>
+        <button type="button" disabled={!remainingSlots} onClick={() => choose(kind, "gallery")} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3.5 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"><ImagePlus size={17} /> Choose from device</button>
       </div>
       <input ref={cameraInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" aria-label="Take an incident photo" onChange={event => { acceptFiles(event.currentTarget.files, nextKind.current); event.currentTarget.value = ""; }} />
       <input ref={galleryInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" aria-label="Choose incident photos" onChange={event => { acceptFiles(event.currentTarget.files, nextKind.current); event.currentTarget.value = ""; }} />
