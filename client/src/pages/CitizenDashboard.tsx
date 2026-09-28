@@ -31,6 +31,7 @@ import {
   Smartphone,
   Sparkles,
   UsersRound,
+  MessageCircleHeart,
   X,
 } from "lucide-react";
 
@@ -362,11 +363,11 @@ export default function Home() {
           </button>
           <div className="hidden items-center gap-2 md:flex">
             {isAdmin && <button onClick={openControlCenter} className="relative inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><KeyRound size={14} />{adminStatus.data?.unlocked ? "Open control center" : "Unlock control center"}{newIncidentIds.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-lg shadow-rose-500/30">{newIncidentIds.length}</span>}</button>}
-            {isAuthenticated ? <button onClick={() => logout()} className="rounded-full px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Sign out</button> : <button onClick={() => startLogin()} className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#075b55]">Sign in</button>}
+            {isAuthenticated ? <><a href="/chatter" className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800"><MessageCircleHeart size={14} /> Chatter</a><button onClick={() => logout()} className="rounded-full px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Sign out</button></> : <button onClick={() => startLogin()} className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#075b55]">Sign in</button>}
           </div>
           <button className="rounded-xl p-2 text-slate-600 md:hidden" onClick={() => setShowMenu(value => !value)} aria-label="Open menu"><Menu size={22} /></button>
         </div>
-        {showMenu && <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">{isAdmin && <button onClick={() => { openControlCenter(); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><KeyRound size={16} />{adminStatus.data?.unlocked ? "Open control center" : "Unlock control center"}{newIncidentIds.length > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{newIncidentIds.length} new</span>}</button>}{isAuthenticated ? <button onClick={() => logout()} className="block w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-500">Sign out</button> : <button onClick={() => startLogin()} className="block w-full rounded-xl bg-[#063f3d] px-4 py-3 text-left text-sm font-bold text-white">Sign in</button>}</div>}
+        {showMenu && <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">{isAdmin && <button onClick={() => { openControlCenter(); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><KeyRound size={16} />{adminStatus.data?.unlocked ? "Open control center" : "Unlock control center"}{newIncidentIds.length > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{newIncidentIds.length} new</span>}</button>}{isAuthenticated ? <><a href="/chatter" className="mb-1 flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-bold text-emerald-800 hover:bg-emerald-50"><MessageCircleHeart size={16} /> Community Chatter</a><button onClick={() => logout()} className="block w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-500">Sign out</button></> : <button onClick={() => startLogin()} className="block w-full rounded-xl bg-[#063f3d] px-4 py-3 text-left text-sm font-bold text-white">Sign in</button>}</div>}
       </header>
 
       {view === "operations" && isAdmin && adminStatus.data?.unlocked ? (

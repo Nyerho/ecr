@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import CitizenDashboard from "./pages/CitizenDashboard";
 import Auth from "./pages/Auth";
 import Dispatch from "./pages/Dispatch";
+import Chatter from "./pages/Chatter";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/register"><Auth mode="register" /></Route>
       <Route path="/dispatch" component={Dispatch} />
       <Route path="/app" component={CitizenDashboard} />
+      <Route path="/chatter" component={Chatter} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
