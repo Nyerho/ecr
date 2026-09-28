@@ -193,6 +193,27 @@ export default function Home() {
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("ecr_prefill_report");
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.description) {
+          setForm(current => ({
+            ...current,
+            description: data.description,
+            locationLabel: data.locationLabel || current.locationLabel,
+          }));
+          if (data.category) setSelectedCategory(data.category as CategoryKey);
+          setReportStep("details");
+          setReportOpen(true);
+          sessionStorage.removeItem("ecr_prefill_report");
+          toast.info("Prefilled official emergency report from Chatter alert.");
+        }
+      }
+    } catch {}
+  }, []);
+
   const isAdmin = false;
   const adminStatus = trpc.admin.status.useQuery(undefined, { enabled: isAuthenticated && isAdmin, retry: false, refetchOnWindowFocus: false });
   const mine = { data: localIncidents, isLoading: false };
