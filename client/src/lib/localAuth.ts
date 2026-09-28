@@ -35,13 +35,40 @@ export function getLocalSession(): LocalUser | null {
   }
 }
 
+export type PasswordRequirements = {
+  minLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+};
+
+export function checkPasswordRequirements(password: string): PasswordRequirements {
+  return {
+    minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[^A-Za-z0-9]/.test(password),
+  };
+}
+
+export function isPasswordStrong(password: string): boolean {
+  const req = checkPasswordRequirements(password);
+  return req.minLength && req.hasUpper && req.hasLower && req.hasNumber && req.hasSpecial;
+}
+
+export const PASSWORD_REQUIREMENT_HINT = "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and special character.";
+
 export function registerLocalUser(input: { name: string; email: string; password: string }): LocalUser {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   if (name.length < 2) throw new Error("Enter your full name.");
   if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
-  if (password.length < 8) throw new Error("Use at least 8 characters for your password.");
+  if (!isPasswordStrong(password)) {
+    throw new Error(PASSWORD_REQUIREMENT_HINT);
+  }
 
   const users = readUsers();
   if (users.some(user => user.email === email)) {

@@ -1,7 +1,14 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { LOCAL_AUTH_NOTICE, registerLocalUser, signInLocalUser } from "@/lib/localAuth";
+import { ArrowLeft, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import {
+  checkPasswordRequirements,
+  isPasswordStrong,
+  LOCAL_AUTH_NOTICE,
+  PASSWORD_REQUIREMENT_HINT,
+  registerLocalUser,
+  signInLocalUser,
+} from "@/lib/localAuth";
 
 export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [, navigate] = useLocation();
@@ -13,9 +20,15 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const passwordReqs = useMemo(() => checkPasswordRequirements(password), [password]);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (isRegister && !isPasswordStrong(password)) {
+      setError(PASSWORD_REQUIREMENT_HINT);
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (isRegister) registerLocalUser({ name, email, password });
@@ -46,7 +59,66 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
               <form onSubmit={submit} className="mt-7 space-y-4">
                 {isRegister && <label className="block"><span className="text-sm font-bold text-slate-700">Full name</span><input required value={name} onChange={event => setName(event.target.value)} autoComplete="name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100" placeholder="Your name" /></label>}
                 <label className="block"><span className="text-sm font-bold text-slate-700">Email address</span><input required type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100" placeholder="you@example.com" /></label>
-                <label className="block"><span className="text-sm font-bold text-slate-700">Password</span><span className="relative mt-2 block"><input required type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={event => setPassword(event.target.value)} autoComplete={isRegister ? "new-password" : "current-password"} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100" placeholder="At least 8 characters" /><button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">Password</span>
+                  <span className="relative mt-2 block">
+                    <input
+                      required
+                      type={showPassword ? "text" : "password"}
+                      minLength={8}
+                      value={password}
+                      onChange={event => setPassword(event.target.value)}
+                      autoComplete={isRegister ? "new-password" : "current-password"}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder={isRegister ? "At least 8 chars with A-Z, a-z, 0-9, symbol" : "Your password"}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(value => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-slate-700"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </span>
+                </label>
+                {isRegister && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs text-slate-600">
+                    <p className="font-bold text-slate-800">Password requirements:</p>
+                    <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      <li className={`flex items-center gap-2 ${passwordReqs.minLength ? "font-bold text-emerald-700" : "text-slate-500"}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${passwordReqs.minLength ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-400"}`}>
+                          <Check size={11} />
+                        </span>
+                        At least 8 characters
+                      </li>
+                      <li className={`flex items-center gap-2 ${passwordReqs.hasUpper ? "font-bold text-emerald-700" : "text-slate-500"}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${passwordReqs.hasUpper ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-400"}`}>
+                          <Check size={11} />
+                        </span>
+                        Uppercase letter (A–Z)
+                      </li>
+                      <li className={`flex items-center gap-2 ${passwordReqs.hasLower ? "font-bold text-emerald-700" : "text-slate-500"}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${passwordReqs.hasLower ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-400"}`}>
+                          <Check size={11} />
+                        </span>
+                        Lowercase letter (a–z)
+                      </li>
+                      <li className={`flex items-center gap-2 ${passwordReqs.hasNumber ? "font-bold text-emerald-700" : "text-slate-500"}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${passwordReqs.hasNumber ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-400"}`}>
+                          <Check size={11} />
+                        </span>
+                        At least 1 number (0–9)
+                      </li>
+                      <li className={`flex items-center gap-2 sm:col-span-2 ${passwordReqs.hasSpecial ? "font-bold text-emerald-700" : "text-slate-500"}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[10px] ${passwordReqs.hasSpecial ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-400"}`}>
+                          <Check size={11} />
+                        </span>
+                        Special character (symbol, e.g. !@#$%^&*)
+                      </li>
+                    </ul>
+                  </div>
+                )}
                 {error && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{error}</p>}
                 <button disabled={isSubmitting} className="w-full rounded-xl bg-[#063f3d] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#075b55] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Please wait…" : isRegister ? "Create local account" : "Sign in"}</button>
               </form>
