@@ -43,6 +43,7 @@ import {
   type ChatterCategory,
   type ChatterMessage,
   type ChatterStatus,
+  type ChatterUrgency,
 } from "@/lib/localChatter";
 
 function initials(name: string) {
@@ -71,6 +72,7 @@ export default function Chatter() {
   const [body, setBody] = useState("");
   const [area, setArea] = useState("");
   const [category, setCategory] = useState<ChatterCategory>("general");
+  const [urgency, setUrgency] = useState<ChatterUrgency>("low");
   const [replyTo, setReplyTo] = useState<ChatterMessage | null>(null);
   const [isSending, setIsSending] = useState(false);
 
@@ -153,10 +155,12 @@ export default function Chatter() {
         body,
         area: replyTo ? undefined : area,
         category: replyTo ? undefined : category,
+        urgency: replyTo ? undefined : urgency,
         replyToId: replyTo?.id,
       });
       setBody("");
       setArea("");
+      setUrgency("low");
       setReplyTo(null);
       refresh();
       toast.success(replyTo ? "Reply posted to thread" : "Alert posted to Chatter feed");
@@ -351,6 +355,41 @@ export default function Chatter() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Urgency Selector (only for new top-level posts) */}
+            {!replyTo && (
+              <div className="mt-3.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Alert Urgency:
+                  </span>
+
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[
+              { id: "low", label: "Low" },
+              { id: "medium", label: "Medium" },
+              { id: "high", label: "High" },
+              { id: "critical", label: "Critical" },
+              ].map(level => {
+              const isSelected = urgency === level.id;
+
+            return (
+                <button
+                key={level.id}
+                type="button"
+                onClick={() => setUrgency(level.id as ChatterUrgency)}
+                className={`rounded-xl border px-3 py-1 text-xs font-bold transition ${
+                isSelected
+                  ? "border-emerald-600 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-600"
+                  : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:border-slate-300"
+                  }`}
+                  >
+                  {level.label}
+                </button>
+                  );
+                })}
                 </div>
               </div>
             )}
@@ -693,6 +732,24 @@ function MessageCard({
   const isResolved = message.status === "resolved";
 
   const categoryMeta = CHATTER_CATEGORIES.find(c => c.id === message.category) ?? CHATTER_CATEGORIES[0];
+const urgencyMeta = {
+  low: {
+    label: "Low",
+    className: "border-slate-300 bg-slate-50 text-slate-600",
+  },
+  medium: {
+    label: "Medium",
+    className: "border-amber-400 bg-amber-50 text-amber-700",
+  },
+  high: {
+    label: "High",
+    className: "border-orange-400 bg-orange-50 text-orange-700",
+  },
+  critical: {
+    label: "Critical",
+    className: "border-red-500 bg-red-50 text-red-700",
+  },
+}[message.urgency];
 
   return (
     <article
@@ -734,10 +791,14 @@ function MessageCard({
 
               {/* Category Badge */}
               <span
-                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${categoryMeta.badgeClass}`}
-              >
+                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${categoryMeta.badgeClass}`}>
                 {categoryMeta.label}
               </span>
+              
+              <span
+                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${urgencyMeta.className}`}>
+                  {urgencyMeta.label}
+                  </span>
 
               {/* Relative Time */}
               <span

@@ -2,6 +2,8 @@ import type { LocalUser } from "./localAuth";
 
 export type ChatterCategory = "general" | "need_help" | "hazard" | "supplies" | "check_in";
 export type ChatterStatus = "open" | "resolved";
+export type ChatterUrgency = "low" | "medium" | "high" | "critical";
+
 
 export type ChatterMessage = {
   id: string;
@@ -10,11 +12,13 @@ export type ChatterMessage = {
   body: string;
   area: string | null;
   category: ChatterCategory;
+  urgency: ChatterUrgency;
   status: ChatterStatus;
   resolvedAt: string | null;
   createdAt: string;
   replyToId: string | null;
 };
+
 
 export type ChatterReport = {
   id: string;
@@ -58,6 +62,7 @@ function readMessages(): ChatterMessage[] {
         body: message.body || "",
         area: message.area || null,
         category: (message.category as ChatterCategory) || "general",
+        urgency: (message.urgency as ChatterUrgency) || "low",
         status: (message.status as ChatterStatus) || "open",
         resolvedAt: message.resolvedAt || null,
         createdAt: message.createdAt || new Date().toISOString(),
@@ -78,7 +83,10 @@ export function loadLocalChatter(): ChatterMessage[] {
 
 export function createLocalChatterMessage(
   user: LocalUser,
-  input: { body: string; area?: string; category?: ChatterCategory; replyToId?: string | null }
+  input: { body: string; area?: string;
+    category?: ChatterCategory;
+    urgency?: ChatterUrgency; 
+    replyToId?: string | null }
 ): ChatterMessage {
   const body = input.body.trim();
   const area = input.area?.trim() || null;
@@ -93,6 +101,7 @@ export function createLocalChatterMessage(
     body,
     area,
     category: input.category || "general",
+    urgency: input.urgency || "low",
     status: "open",
     resolvedAt: null,
     createdAt: new Date().toISOString(),
