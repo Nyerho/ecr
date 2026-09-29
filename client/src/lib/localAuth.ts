@@ -1,8 +1,15 @@
+export type LocalUserRole =
+  | "citizen"
+  | "dispatcher"
+  | "agencyCoordinator"
+  | "responder"
+  | "administrator";
+
 export type LocalUser = {
   id: string;
   name: string;
   email: string;
-  role: "user";
+  role: LocalUserRole;
   createdAt: string;
 };
 
@@ -80,7 +87,7 @@ export function registerLocalUser(input: { name: string; email: string; password
     name,
     email,
     password,
-    role: "user",
+    role: "citizen",
     createdAt: new Date().toISOString(),
   };
   writeUsers([...users, user]);

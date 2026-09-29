@@ -108,7 +108,7 @@ export function toggleResolveLocalChatterMessage(messageId: string, user: LocalU
   if (index === -1) throw new Error("Message not found.");
 
   const current = messages[index];
-  if (current.authorId !== user.id && user.role !== "admin") {
+  if (current.authorId !== user.id && user.role !== "administrator") {
     throw new Error("Only the original author can change the resolution status of this request.");
   }
 

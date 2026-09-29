@@ -550,7 +550,7 @@ export default function Chatter() {
 
         {/* Sidebar Info & Safety */}
         <aside className="space-y-4">
-          <div className="rounded-[1.5rem] border border-amber-200/80 bg-amber-50/90 p-5 shadow-xs">
+          <div className="rounded-3xl border border-amber-200/80 bg-amber-50/90 p-5 shadow-xs">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-200 text-amber-900">
                 <AlertTriangle size={13} />
@@ -577,7 +577,7 @@ export default function Chatter() {
             </ul>
           </div>
 
-          <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5 shadow-xs">
+          <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-xs">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-200 text-emerald-900">
                 <HandHelping size={13} />
@@ -595,7 +595,7 @@ export default function Chatter() {
             </Link>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cyan-100 bg-cyan-50/70 p-5 shadow-xs">
+          <div className="rounded-3xl border border-cyan-100 bg-cyan-50/70 p-5 shadow-xs">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-800">Prototype Storage</p>
             <p className="mt-2 text-xs leading-5 text-cyan-950/75">{LOCAL_CHATTER_NOTICE}</p>
           </div>
