@@ -9,6 +9,7 @@ import CitizenDashboard from "./pages/CitizenDashboard";
 import Auth from "./pages/Auth";
 import Dispatch from "./pages/Dispatch";
 import Admin from "./pages/Admin";
+import CookieConsent from "./components/CookieConsent";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
