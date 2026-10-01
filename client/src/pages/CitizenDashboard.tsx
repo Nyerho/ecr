@@ -39,7 +39,7 @@ import {
   X,
 } from "lucide-react";
 
-const BEACON_IMAGE = "/ecr-response-beacon.png";
+const BEACON_IMAGE = "/ecr-logo-3d.jpg";
 
 const categories = [
   { key: "medical", label: "Medical", detail: "Illness, injury or ambulance", icon: HeartPulse, tone: "rose" },
@@ -402,7 +402,7 @@ export default function Home() {
                   <div className="rounded-[1.5rem] bg-[#f4faf8]/95 p-5 shadow-inner shadow-white sm:p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Your response loop</p><p className="mt-1 max-w-[245px] text-lg font-black text-slate-900">One clear thread from report to resolution</p></div><span className="icon-orb rounded-2xl bg-emerald-100 p-3 text-emerald-700"><Activity size={20} /></span></div><div className="mt-6 space-y-4">{[["01", "Report", "Choose what is happening and add the essentials"], ["02", "Locate", "Confirm where responders should go"], ["03", "Coordinate", "Authorized teams triage and take ownership"], ["04", "Track", "See the status without chasing updates"]].map(([number, title, detail], index) => <div key={number} className="flex items-start gap-4"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-black ${index === 0 ? "bg-[#063f3d] text-white" : "bg-white text-emerald-800 ring-1 ring-emerald-100"}`}>{number}</span><div><p className="text-sm font-black text-slate-900">{title}</p><p className="mt-0.5 max-w-[200px] text-xs leading-5 text-slate-500">{detail}</p></div></div>)}</div></div>
                 </div>
                 <div className="beacon-halo absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-200/20" />
-                <img src={BEACON_IMAGE} alt="3D glass response beacon" className="hero-beacon pointer-events-none absolute -right-6 bottom-0 z-20 h-64 w-64 object-contain drop-shadow-[0_30px_30px_rgba(0,0,0,0.28)] sm:-right-10 sm:h-80 sm:w-80" />
+                <img src={BEACON_IMAGE} alt="3D ECR emergency response emblem" className="hero-beacon pointer-events-none absolute -right-6 bottom-0 z-20 h-64 w-64 rounded-3xl object-contain drop-shadow-[0_30px_30px_rgba(0,0,0,0.28)] sm:-right-10 sm:h-80 sm:w-80" />
                 <div className="glass-particle absolute left-3 top-6 h-3 w-3 rounded-full bg-cyan-200/80" /><div className="glass-particle absolute right-2 top-28 h-2 w-2 rounded-full bg-emerald-200/80 [animation-delay:800ms]" /><div className="glass-particle absolute bottom-10 left-16 h-2 w-2 rounded-full bg-white/70 [animation-delay:1400ms]" />
               </div>
             </div>
