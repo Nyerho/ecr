@@ -8,6 +8,7 @@ import { createFirestoreIncident, firebaseConfigured, subscribeToMyIncidents, ty
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
+import FloatingTikTok from "@/components/FloatingTikTok";
 import IncidentPhotoPicker from "@/components/IncidentPhotoPicker";
 import IncidentPhotoGallery from "@/components/IncidentPhotoGallery";
 import { Button } from "@/components/ui/button";
@@ -439,6 +440,7 @@ export default function Home() {
 
       <EmergencyContactsModal open={contactsOpen} onClose={() => setContactsOpen(false)} onReport={openReport} />
       <FloatingWhatsApp />
+      <FloatingTikTok />
       {reportOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div className="glass-card max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white/95 p-5 shadow-2xl sm:rounded-[2rem] sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Secure community help request</p><h2 className="mt-1 text-2xl font-black tracking-tight">{reportStep === "category" ? "What is happening?" : selected?.label ?? "Report details"}</h2><p className="mt-1 text-sm text-slate-500">Only share what is safe and necessary.</p></div><button onClick={() => setReportOpen(false)} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100" aria-label="Close report"><X size={20} /></button></div><div className="mt-6 flex items-center gap-2">{["category", "details", "location", "review"].map((step, index) => <span key={step} className={`h-1.5 flex-1 rounded-full ${["category", "details", "location", "review"].indexOf(reportStep) >= index ? "bg-emerald-500" : "bg-slate-200"}`} />)}</div>
         {reportStep === "category" && <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">{categories.map(item => { const Icon = item.icon; return <button key={item.key} onClick={() => { setSelectedCategory(item.key); setReportStep("details"); }} className="glass-tile rounded-2xl border border-slate-200 p-4 text-left transition hover:-translate-y-1 hover:border-emerald-400 hover:bg-emerald-50/50"><span className={`icon-orb grid h-10 w-10 place-items-center rounded-xl ring-1 ${toneClasses[item.tone]}`}><Icon size={18} /></span><span className="mt-3 block text-xs font-black">{item.label}</span></button>; })}</div>}
         {reportStep === "details" && <div className="mt-7 space-y-5">
