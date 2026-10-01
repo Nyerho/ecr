@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { advanceLocalIncident, getNextLocalStatus, type LocalIncident } from "@/lib/localIncidents";
 import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
 import { createFirestoreIncident, firebaseConfigured, subscribeToMyIncidents, type FirestoreIncident } from "@/lib/firebase";
+import BrandLogo from "@/components/BrandLogo";
 import IncidentPhotoPicker from "@/components/IncidentPhotoPicker";
 import IncidentPhotoGallery from "@/components/IncidentPhotoGallery";
 import { Button } from "@/components/ui/button";
@@ -370,10 +371,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_12px_40px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <button onClick={() => { setView("citizen"); setShowMenu(false); }} className="flex items-center gap-3 text-left" aria-label="ECR home">
-            <span className="brand-mark grid h-10 w-10 place-items-center rounded-2xl bg-[#063f3d] text-white shadow-lg shadow-emerald-950/10"><ShieldCheck size={21} /></span>
-            <span><span className="block text-[15px] font-black tracking-[0.18em] text-[#063f3d]">ECR</span><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Emergency Community Response</span></span>
-          </button>
+          <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <div className="hidden items-center gap-2 md:flex">
             {isAdmin && <button onClick={openControlCenter} className="relative inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><KeyRound size={14} />{"Open admin center"}{newIncidentIds.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-lg shadow-rose-500/30">{newIncidentIds.length}</span>}</button>}
             {isAuthenticated ? <button onClick={() => logout()} className="rounded-full px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Sign out</button> : <button onClick={() => startLogin()} className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#075b55]">Sign in</button>}

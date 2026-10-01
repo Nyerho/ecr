@@ -1,8 +1,9 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { firebaseSetupMessage, registerFirebaseUser, signInFirebaseUser } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [, navigate] = useLocation();
@@ -35,11 +36,11 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
         <div className="grid w-full overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="hidden bg-[#063f3d] p-10 text-white lg:block lg:p-14">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-100 hover:text-white"><ArrowLeft size={16} /> Back to ECR</Link>
+            <BrandLogo className="w-36" imageClassName="rounded-xl" label="ECR home" />
             <div className="mt-24"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-[#063f3d]"><ShieldCheck size={25} /></div><p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Emergency Community Response</p><h1 className="mt-4 text-4xl font-black leading-tight">A safer response loop starts with a trusted account.</h1><p className="mt-5 max-w-sm text-sm leading-7 text-emerald-50/75">Sign in securely with Firebase Authentication, submit a report, and track your incident history from any device.</p></div>
           </section>
           <section className="p-6 sm:p-10 lg:p-14">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-emerald-700 lg:hidden"><ArrowLeft size={16} /> Back to ECR</Link>
+            <BrandLogo className="w-28 lg:hidden" imageClassName="rounded-xl" label="ECR home" />
             <div className="mx-auto max-w-md">
               <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-emerald-700 lg:mt-0">Secure Firebase access</p>
               <h2 className="mt-3 text-3xl font-black tracking-tight">{isRegister ? "Create your account" : "Welcome back"}</h2>

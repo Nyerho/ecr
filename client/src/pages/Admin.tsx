@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Activity, Building2, CheckCircle2, Clock3, FileText, LockKeyhole, RefreshCw, ShieldCheck, Users, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import BrandLogo from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { firebaseConfigured, subscribeToAdminCollection, updateFirestoreUserRole, createFirestoreOrganization, writeFirestoreAudit, type FirebaseProfile, type FirestoreIncident, type UserRole } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -93,7 +94,7 @@ export default function Admin() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><ShieldCheck size={21} /></span><span><span className="block text-sm font-black tracking-[0.16em] text-primary">ECR ADMIN</span><span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Firebase control center</span></span></Link>
+          <div className="flex items-center gap-3"><BrandLogo className="w-20" imageClassName="rounded-xl" /><span><span className="block text-sm font-black tracking-[0.16em] text-primary">ECR ADMIN</span><span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Firebase control center</span></span></div>
           <div className="flex items-center gap-2"><span className="hidden text-xs font-semibold text-muted-foreground sm:block">{user.email}</span><Button variant="outline" size="sm" onClick={() => navigate("/app")}>Citizen app</Button><Button variant="ghost" size="sm" onClick={() => navigate("/")}>Exit</Button></div>
         </div>
       </header>
