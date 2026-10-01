@@ -49,7 +49,7 @@ async function startServer() {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+    res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=(self)");
     res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     if (process.env.NODE_ENV === "production") {

@@ -1,4 +1,5 @@
 import type { LocalUser } from "./localAuth";
+import type { LocalIncidentPhoto } from "./localIncidentPhotos";
 
 export type LocalIncidentEvent = {
   id: string;
@@ -25,6 +26,7 @@ export type LocalIncident = {
   createdAt: string;
   version: number;
   events: LocalIncidentEvent[];
+  photos?: LocalIncidentPhoto[];
 };
 
 const INCIDENTS_KEY = "ecr-local-incidents";
@@ -49,6 +51,7 @@ export function loadLocalIncidents(user: LocalUser | null): LocalIncident[] {
     if (!raw) return [];
     return (JSON.parse(raw) as LocalIncident[]).map(incident => ({
       ...incident,
+      photos: incident.photos ?? [],
       events: (incident.events ?? [{ id: `${incident.id}-submitted`, status: "submitted", label: "Report submitted", createdAt: incident.createdAt, actor: "citizen", previousValue: null, newValue: "submitted" }]).map(event => ({
         ...event,
         actor: event.actor ?? "system",
@@ -65,6 +68,7 @@ export function createLocalIncident(user: LocalUser, input: {
   locationLabel?: string;
   reporterPhone?: string;
   reporterEmail?: string;
+  photos?: LocalIncidentPhoto[];
 }): LocalIncident {
   const current = loadLocalIncidents(user);
   const createdAt = new Date().toISOString();
@@ -82,11 +86,18 @@ export function createLocalIncident(user: LocalUser, input: {
     assignedOrganizationId: null,
     createdAt,
     version: 1,
+    photos: input.photos ?? [],
     events: [{ id: `${Date.now()}-submitted`, status: "submitted", label: "Report submitted", createdAt, actor: "citizen", previousValue: null, newValue: "submitted" }],
   };
   localStorage.setItem(storageKey(user), JSON.stringify([incident, ...current]));
   return incident;
 }
+
+export function removeLocalIncident(user: LocalUser, incidentId: number): void {
+  const incidents = loadLocalIncidents(user).filter(incident => incident.id !== incidentId);
+  localStorage.setItem(storageKey(user), JSON.stringify(incidents));
+}
+
 
 export function advanceLocalIncident(user: LocalUser, incidentId: number): LocalIncident | null {
   const incidents = loadLocalIncidents(user);
