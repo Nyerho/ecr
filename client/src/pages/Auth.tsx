@@ -44,7 +44,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   return (
     <main className="min-h-screen bg-[#f5f8f7] px-4 py-8 text-slate-950 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
-        <div className="grid w-full overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid w-full overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="hidden bg-[#063f3d] p-10 text-white lg:block lg:p-14">
             <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-100 hover:text-white"><ArrowLeft size={16} /> Back to ECR</Link>
             <div className="mt-24"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-[#063f3d]"><ShieldCheck size={25} /></div><p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Emergency Community Response</p><h1 className="mt-4 text-4xl font-black leading-tight">A safer response loop starts with a trusted account.</h1><p className="mt-5 max-w-sm text-sm leading-7 text-emerald-50/75">Create a local pilot account, submit a report, and keep your incident history in this browser while the Firestore foundation is prepared.</p></div>

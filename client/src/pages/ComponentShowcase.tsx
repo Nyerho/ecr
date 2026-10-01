@@ -782,7 +782,7 @@ export default function ComponentsShowcase() {
                     <TableCaption>A list of your recent invoices.</TableCaption>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Invoice</TableHead>
+                        <TableHead className="w-25">Invoice</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Method</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -1269,7 +1269,7 @@ export default function ComponentsShowcase() {
                 <Separator />
                 <div className="space-y-2">
                   <Label>Scroll Area</Label>
-                  <ScrollArea className="h-[200px] w-full rounded-md border overflow-hidden">
+                  <ScrollArea className="h-50 w-full rounded-md border overflow-hidden">
                     <div className="p-4">
                       <div className="space-y-4">
                         {Array.from({ length: 20 }).map((_, i) => (
@@ -1292,7 +1292,7 @@ export default function ComponentsShowcase() {
               <CardContent className="pt-6">
                 <ResizablePanelGroup
                   direction="horizontal"
-                  className="min-h-[200px] rounded-lg border"
+                  className="min-h-50 rounded-lg border"
                 >
                   <ResizablePanel defaultSize={50}>
                     <div className="flex h-full items-center justify-center p-6">
