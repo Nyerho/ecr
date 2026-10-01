@@ -155,7 +155,7 @@ export async function createFirestoreIncident(input: Pick<FirestoreIncident, "re
   const database = requireFirestore();
   const reference = `ECR-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const nowEvent = { label: "Report submitted", actorUid: input.reporterUid, previousValue: null, newValue: "submitted", createdAt: serverTimestamp() };
-  return addDoc(collection(database, "incidents"), {
+  const documentReference = await addDoc(collection(database, "incidents"), {
     ...input,
     publicReference: reference,
     status: "submitted",
@@ -165,6 +165,7 @@ export async function createFirestoreIncident(input: Pick<FirestoreIncident, "re
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  return { id: documentReference.id, publicReference: reference };
 }
 
 export async function updateFirestoreIncident(id: string, changes: Partial<Pick<FirestoreIncident, "status" | "priority" | "assignedOrganizationId">>, actorUid: string, expectedVersion: number) {

@@ -20,9 +20,11 @@ import {
   ArrowRight,
   Bell,
   BellRing,
+  Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Copy,
   Crosshair,
   FileWarning,
   Flame,
@@ -197,6 +199,8 @@ export default function Home() {
   const [showMenu, setShowMenu] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportReceipt, setReportReceipt] = useState<{ reference: string; location: string } | null>(null);
+  const [receiptCopied, setReceiptCopied] = useState(false);
   const [reportStep, setReportStep] = useState<"category" | "details" | "location" | "review">("category");
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
   const [form, setForm] = useState<ReportForm>(emptyForm);
@@ -349,7 +353,9 @@ export default function Home() {
         reporterPhone: form.reporterPhone.trim() || undefined,
         reporterEmail: form.reporterEmail.trim() || undefined,
       });
-      toast.success(`Report saved to Firestore (${result.id})`);
+      setReportReceipt({ reference: result.publicReference, location: form.locationLabel.trim() || (form.latitude && form.longitude ? `${form.latitude}, ${form.longitude}` : "Location shared privately") });
+      setReceiptCopied(false);
+      toast.success(`Report submitted (${result.publicReference})`);
       setReportOpen(false);
       setReportStep("category");
       setSelectedCategory(null);
@@ -359,6 +365,18 @@ export default function Home() {
       toast.error(error instanceof Error ? error.message : "The report could not be saved to Firestore.");
     } finally {
       setIsSubmittingLocal(false);
+    }
+  }
+
+  async function copyReportReference() {
+    if (!reportReceipt) return;
+    const text = `ECR emergency report ${reportReceipt.reference}. Keep this reference for follow-up.`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setReceiptCopied(true);
+      toast.success("Report reference copied");
+    } catch {
+      toast.error("Could not copy automatically. Please note the reference manually.");
     }
   }
 
@@ -441,6 +459,7 @@ export default function Home() {
       <EmergencyContactsModal open={contactsOpen} onClose={() => setContactsOpen(false)} onReport={openReport} />
       <FloatingWhatsApp />
       <FloatingTikTok />
+      {reportReceipt && <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><CheckCircle2 size={28} /></div><p className="mt-5 text-center text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Report received</p><h2 id="receipt-title" className="mt-2 text-center text-2xl font-black tracking-tight text-slate-950">Keep this reference</h2><p className="mt-2 text-center text-sm leading-6 text-slate-500">ECR has saved your report. Use this reference when following up with the ECR team or checking your incident history.</p><div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-center"><p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">Report reference</p><p className="mt-2 text-2xl font-black tracking-wide text-emerald-950">{reportReceipt.reference}</p><p className="mt-2 text-xs text-emerald-900/70">{reportReceipt.location}</p></div><div className="mt-5 flex gap-3"><Button onClick={copyReportReference} variant="outline" className="flex-1 rounded-xl">{receiptCopied ? <Check size={15} /> : <Copy size={15} />}{receiptCopied ? "Copied" : "Copy reference"}</Button><Button onClick={() => setReportReceipt(null)} className="flex-1 rounded-xl bg-[#063f3d]">Done</Button></div><p className="mt-4 text-center text-[11px] leading-4 text-slate-400">For immediate danger, contact the appropriate official emergency service directly.</p></section></div>}
       {reportOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div className="glass-card max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white/95 p-5 shadow-2xl sm:rounded-[2rem] sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Secure community help request</p><h2 className="mt-1 text-2xl font-black tracking-tight">{reportStep === "category" ? "What is happening?" : selected?.label ?? "Report details"}</h2><p className="mt-1 text-sm text-slate-500">Only share what is safe and necessary.</p></div><button onClick={() => setReportOpen(false)} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100" aria-label="Close report"><X size={20} /></button></div><div className="mt-6 flex items-center gap-2">{["category", "details", "location", "review"].map((step, index) => <span key={step} className={`h-1.5 flex-1 rounded-full ${["category", "details", "location", "review"].indexOf(reportStep) >= index ? "bg-emerald-500" : "bg-slate-200"}`} />)}</div>
         {reportStep === "category" && <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">{categories.map(item => { const Icon = item.icon; return <button key={item.key} onClick={() => { setSelectedCategory(item.key); setReportStep("details"); }} className="glass-tile rounded-2xl border border-slate-200 p-4 text-left transition hover:-translate-y-1 hover:border-emerald-400 hover:bg-emerald-50/50"><span className={`icon-orb grid h-10 w-10 place-items-center rounded-xl ring-1 ${toneClasses[item.tone]}`}><Icon size={18} /></span><span className="mt-3 block text-xs font-black">{item.label}</span></button>; })}</div>}
         {reportStep === "details" && <div className="mt-7 space-y-5">
