@@ -28,6 +28,7 @@ import {
   KeyRound,
   LockKeyhole,
   Mail,
+  MessageCircle,
   MapPin,
   Menu,
   Phone,
@@ -429,7 +430,7 @@ export default function Home() {
             </div>
           </section>
 
-      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"><span>Emergency Community Response · Pilot interface</span><span className="inline-flex items-center gap-2"><LockKeyhole size={13} /> Do not delay calling official emergency services</span></div></footer>
+      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"><span>Emergency Community Response · Pilot interface</span><div className="flex flex-wrap items-center gap-4"><a href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800"><MessageCircle size={13} /> WhatsApp updates</a><span className="inline-flex items-center gap-2"><LockKeyhole size={13} /> Do not delay calling official emergency services</span></div></div></footer>
 
       {adminPromptOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-xl"><div className="glass-card w-full max-w-md rounded-[2rem] border border-white/60 bg-white/90 p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between"><div><span className="icon-orb grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-800"><KeyRound size={20} /></span><p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Restricted access</p><h2 className="mt-1 text-2xl font-black tracking-tight">Unlock the control center</h2><p className="mt-2 text-sm leading-6 text-slate-500">Use the administrator password to access live incident details and responder contacts.</p></div><button onClick={() => setAdminPromptOpen(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100" aria-label="Close unlock dialog"><X size={19} /></button></div><label className="mt-6 block"><span className="text-sm font-black">Admin password</span><input autoFocus type="password" value={adminPassword} onChange={event => setAdminPassword(event.target.value)} onKeyDown={event => { if (event.key === "Enter") unlockAdmin.mutate({ password: adminPassword }); }} placeholder="Enter your secure password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-emerald-500 transition focus:ring-2" /></label><div className="mt-6 flex gap-3"><Button variant="outline" onClick={() => setAdminPromptOpen(false)} className="flex-1 rounded-xl">Cancel</Button><Button disabled={!adminPassword || unlockAdmin.isPending} onClick={() => unlockAdmin.mutate({ password: adminPassword })} className="flex-1 rounded-xl bg-[#063f3d]">{unlockAdmin.isPending ? "Checking…" : "Unlock center"}</Button></div><p className="mt-4 text-center text-[11px] text-slate-400">Password is validated server-side and never stored in the browser.</p></div></div>}
 
