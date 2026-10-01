@@ -1,6 +1,8 @@
 import { Flame, HeartPulse, MapPin, MessageCircle, Phone, ShieldAlert, UsersRound, X } from "lucide-react";
 import { useEffect } from "react";
 
+const WHATSAPP_REPORT_CHAT = "https://wa.me/2348100760542?text=Hello%20ECR%2C%20I%20need%20community%20help.%20My%20location%20is%3A%20";
+
 type EmergencyContactsModalProps = {
   open: boolean;
   onClose: () => void;
@@ -100,7 +102,7 @@ export default function EmergencyContactsModal({ open, onClose, onReport }: Emer
           })}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-[#063f3d] p-5 text-white sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><UsersRound className="mt-0.5 shrink-0 text-emerald-300" size={20} /><div><h3 className="font-black">Need community help too?</h3><p className="mt-1 text-xs leading-5 text-emerald-50/75">Raise an ECR alert after contacting the right authority. Verified responders may be able to provide first aid, directions, transport support, or a safe handoff.</p></div></div><div className="flex flex-wrap gap-2">{onReport && <button type="button" onClick={() => { onClose(); onReport(); }} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#13b981] px-4 py-3 text-xs font-black text-[#022c2b] hover:bg-[#34d399]">Raise an ECR alert</button>}<a href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-black text-white ring-1 ring-white/20 hover:bg-white/15"><MessageCircle size={14} /> WhatsApp channel</a></div></div>
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-[#063f3d] p-5 text-white sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><UsersRound className="mt-0.5 shrink-0 text-emerald-300" size={20} /><div><h3 className="font-black">Need community help too?</h3><p className="mt-1 text-xs leading-5 text-emerald-50/75">Raise an ECR alert after contacting the right authority. Verified responders may be able to provide first aid, directions, transport support, or a safe handoff.</p></div></div><div className="flex flex-wrap gap-2">{onReport && <button type="button" onClick={() => { onClose(); onReport(); }} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#13b981] px-4 py-3 text-xs font-black text-[#022c2b] hover:bg-[#34d399]">Raise an ECR alert</button>}<a href={WHATSAPP_REPORT_CHAT} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-black text-white hover:bg-[#1ebe5d]"><MessageCircle size={14} /> WhatsApp report chat</a><a href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-black text-white ring-1 ring-white/20 hover:bg-white/15"><MessageCircle size={14} /> Channel updates</a></div></div>
 
         <div className="mt-5 flex justify-end"><button type="button" onClick={onClose} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-200">Close</button></div>
       </section>
