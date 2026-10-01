@@ -343,6 +343,8 @@ export default function Home() {
         category: selectedCategory,
         description: form.description.trim(),
         locationLabel: form.locationLabel.trim() || undefined,
+        latitude: form.latitude || undefined,
+        longitude: form.longitude || undefined,
         reporterPhone: form.reporterPhone.trim() || undefined,
         reporterEmail: form.reporterEmail.trim() || undefined,
       });

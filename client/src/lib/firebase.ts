@@ -128,6 +128,8 @@ export type FirestoreIncident = {
   priority: string;
   description: string;
   locationLabel?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
   reporterPhone?: string | null;
   reporterEmail?: string | null;
   assignedOrganizationId?: string | null;
@@ -149,7 +151,7 @@ export function subscribeToAdminCollection<T extends DocumentData>(name: "incide
   return onSnapshot(source, snapshot => callback(snapshot.docs.map(mapFirestoreDocument) as Array<T & { id: string }>));
 }
 
-export async function createFirestoreIncident(input: Pick<FirestoreIncident, "reporterUid" | "category" | "description" | "locationLabel" | "reporterPhone" | "reporterEmail">) {
+export async function createFirestoreIncident(input: Pick<FirestoreIncident, "reporterUid" | "category" | "description" | "locationLabel" | "latitude" | "longitude" | "reporterPhone" | "reporterEmail">) {
   const database = requireFirestore();
   const reference = `ECR-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
   const nowEvent = { label: "Report submitted", actorUid: input.reporterUid, previousValue: null, newValue: "submitted", createdAt: serverTimestamp() };
