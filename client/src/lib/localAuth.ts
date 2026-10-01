@@ -2,8 +2,8 @@ export type LocalUser = {
   id: string;
   name: string;
   email: string;
-  role: "user";
-  createdAt: string;
+  role: string;
+  createdAt?: unknown;
 };
 
 type StoredUser = LocalUser & {
@@ -82,4 +82,4 @@ function toPublicUser(user: StoredUser): LocalUser {
   return publicUser;
 }
 
-export const LOCAL_AUTH_NOTICE = "Local prototype mode: accounts are stored only in this browser until Firestore is connected.";
+export const LOCAL_AUTH_NOTICE = "Accounts and sessions are managed by Firebase Authentication.";

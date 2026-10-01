@@ -25,6 +25,14 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 :focus-visible { outline: 3px solid rgba(16, 185, 129, 0.45); outline-offset: 3px; }
 ::selection { background: rgba(16, 185, 129, 0.2); }
 
+.eyebrow { color: #047857; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.16em; line-height: 1.2; text-transform: uppercase; }
+.page-title { color: #0f2422; font-size: clamp(1.75rem, 3vw, 2.35rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; }
+.section-title { color: #0f2422; font-size: 1.15rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
+.page-description { max-width: 46rem; color: #64748b; font-size: 0.9rem; line-height: 1.6; }
+.field-label { display: grid; gap: 0.5rem; color: #475569; font-size: 0.75rem; font-weight: 800; }
+.field-control { width: 100%; min-height: 2.75rem; border: 1px solid var(--input); border-radius: 0.75rem; background: var(--background); padding: 0.65rem 0.8rem; color: var(--foreground); font-size: 0.875rem; font-weight: 600; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
+.field-control:focus { border-color: #10b981; background: #fff; box-shadow: 0 0 0 3px rgba(16,185,129,0.14); }
+
 .hero-surface { isolation: isolate; }
 .hero-grid {
   background-image: linear-gradient(rgba(167, 243, 208, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 243, 208, 0.09) 1px, transparent 1px);

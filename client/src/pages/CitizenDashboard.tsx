@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { advanceLocalIncident, createLocalIncident, getNextLocalStatus, loadLocalIncidents, removeLocalIncident, type LocalIncident } from "@/lib/localIncidents";
-import { storeIncidentPhotos, type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
+import { advanceLocalIncident, getNextLocalStatus, type LocalIncident } from "@/lib/localIncidents";
+import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
+import { createFirestoreIncident, firebaseConfigured, subscribeToMyIncidents, type FirestoreIncident } from "@/lib/firebase";
 import IncidentPhotoPicker from "@/components/IncidentPhotoPicker";
 import IncidentPhotoGallery from "@/components/IncidentPhotoGallery";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ type CategoryKey = (typeof categories)[number]["key"];
 type Status = "submitted" | "received" | "triaged" | "assigned" | "responding" | "arrived" | "resolved" | "cancelled" | "duplicate" | "unable_to_verify" | "escalated" | "closed";
 type IncidentCard = {
   id: number;
+  firestoreId?: string;
   publicReference: string;
   category: string;
   status: string;
@@ -71,6 +73,10 @@ type IncidentCard = {
 
 function toIncidentCard(incident: LocalIncident): IncidentCard {
   return { ...incident, createdAt: new Date(incident.createdAt) };
+}
+function toFirestoreIncidentCard(incident: FirestoreIncident & { id: string }): IncidentCard {
+  const timestamp = incident.createdAt && typeof incident.createdAt === "object" && "toDate" in incident.createdAt ? (incident.createdAt as { toDate: () => Date }).toDate() : new Date();
+  return { id: Number.parseInt(incident.id.slice(0, 8), 16) || Math.floor(Math.random() * 1000000), firestoreId: incident.id, publicReference: incident.publicReference, category: incident.category, status: incident.status, priority: incident.priority, description: incident.description, locationLabel: incident.locationLabel ?? null, reporterPhone: incident.reporterPhone ?? null, reporterEmail: incident.reporterEmail ?? null, assignedOrganizationId: null, createdAt: timestamp, version: incident.version, events: (incident.events ?? []).map((event, index) => ({ id: `${incident.id}-${index}`, status: incident.status, label: event.label, createdAt: event.createdAt && typeof event.createdAt === "object" && "toDate" in event.createdAt ? (event.createdAt as { toDate: () => Date }).toDate().toISOString() : timestamp.toISOString(), actor: event.actorUid === incident.reporterUid ? "citizen" : "dispatcher", previousValue: event.previousValue, newValue: event.newValue })) };
 }
 
 type AgencyNotificationCard = {
@@ -180,7 +186,7 @@ function playAlertTone() {
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
-  const [localIncidents, setLocalIncidents] = useState<IncidentCard[]>(() => loadLocalIncidents(user).map(toIncidentCard));
+  const [localIncidents, setLocalIncidents] = useState<IncidentCard[]>([]);
   const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
   const [localLifecycleMessage, setLocalLifecycleMessage] = useState("");
   const [showMenu, setShowMenu] = useState(false);
@@ -197,8 +203,8 @@ export default function Home() {
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
 
-  const isAdmin = false;
-  const adminStatus = trpc.admin.status.useQuery(undefined, { enabled: isAuthenticated && isAdmin, retry: false, refetchOnWindowFocus: false });
+  const isAdmin = user?.role === "admin";
+  const adminStatus = trpc.admin.status.useQuery(undefined, { enabled: false, retry: false, refetchOnWindowFocus: false });
   const mine = { data: localIncidents, isLoading: false };
   const operations = trpc.operations.list.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin && Boolean(adminStatus.data?.unlocked),
@@ -255,7 +261,8 @@ export default function Home() {
   const canAdvanceLocation = Boolean(form.locationLabel.trim() || (form.latitude && form.longitude));
 
   useEffect(() => {
-    setLocalIncidents(loadLocalIncidents(user).map(toIncidentCard));
+    if (!user || !firebaseConfigured) { setLocalIncidents([]); return; }
+    return subscribeToMyIncidents(user.uid, incidents => setLocalIncidents(incidents.map(incident => toFirestoreIncidentCard(incident))));
   }, [user]);
 
   useEffect(() => {
@@ -303,8 +310,7 @@ export default function Home() {
       toast.error("This area is restricted to authorized ECR administrators.");
       return;
     }
-    if (adminStatus.data?.unlocked) setView("operations");
-    else setAdminPromptOpen(true);
+    window.location.href = "/admin";
   }
 
   function useDeviceLocation() {
@@ -326,28 +332,23 @@ export default function Home() {
     if (!selectedCategory || !canAdvanceDetails || !canAdvanceLocation) return;
     if (!user) return;
     setIsSubmittingLocal(true);
-    let createdIncidentId: number | null = null;
     try {
-      const result = createLocalIncident(user, {
+      const result = await createFirestoreIncident({
+        reporterUid: user.uid,
         category: selectedCategory,
         description: form.description.trim(),
         locationLabel: form.locationLabel.trim() || undefined,
         reporterPhone: form.reporterPhone.trim() || undefined,
         reporterEmail: form.reporterEmail.trim() || undefined,
-        photos: photoDrafts.map(({ file: _file, ...photo }) => photo),
       });
-      createdIncidentId = result.id;
-      await storeIncidentPhotos(result.id, photoDrafts);
-      setLocalIncidents(current => [toIncidentCard(result), ...current]);
-      toast.success(`Report ${result.publicReference} and photos saved in this browser`);
+      toast.success(`Report saved to Firestore (${result.id})`);
       setReportOpen(false);
       setReportStep("category");
       setSelectedCategory(null);
       setForm(emptyForm());
       setPhotoDrafts([]);
     } catch (error) {
-      if (createdIncidentId !== null) removeLocalIncident(user, createdIncidentId);
-      toast.error(error instanceof Error ? error.message : "The report and photos could not be saved in this browser.");
+      toast.error(error instanceof Error ? error.message : "The report could not be saved to Firestore.");
     } finally {
       setIsSubmittingLocal(false);
     }
@@ -374,12 +375,12 @@ export default function Home() {
             <span><span className="block text-[15px] font-black tracking-[0.18em] text-[#063f3d]">ECR</span><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Emergency Community Response</span></span>
           </button>
           <div className="hidden items-center gap-2 md:flex">
-            {isAdmin && <button onClick={openControlCenter} className="relative inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><KeyRound size={14} />{adminStatus.data?.unlocked ? "Open control center" : "Unlock control center"}{newIncidentIds.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-lg shadow-rose-500/30">{newIncidentIds.length}</span>}</button>}
+            {isAdmin && <button onClick={openControlCenter} className="relative inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><KeyRound size={14} />{"Open admin center"}{newIncidentIds.length > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-lg shadow-rose-500/30">{newIncidentIds.length}</span>}</button>}
             {isAuthenticated ? <button onClick={() => logout()} className="rounded-full px-4 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Sign out</button> : <button onClick={() => startLogin()} className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#075b55]">Sign in</button>}
           </div>
           <button className="rounded-xl p-2 text-slate-600 md:hidden" onClick={() => setShowMenu(value => !value)} aria-label="Open menu"><Menu size={22} /></button>
         </div>
-        {showMenu && <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">{isAdmin && <button onClick={() => { openControlCenter(); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><KeyRound size={16} />{adminStatus.data?.unlocked ? "Open control center" : "Unlock control center"}{newIncidentIds.length > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{newIncidentIds.length} new</span>}</button>}{isAuthenticated ? <button onClick={() => logout()} className="block w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-500">Sign out</button> : <button onClick={() => startLogin()} className="block w-full rounded-xl bg-[#063f3d] px-4 py-3 text-left text-sm font-bold text-white">Sign in</button>}</div>}
+        {showMenu && <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">{isAdmin && <button onClick={() => { openControlCenter(); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><KeyRound size={16} />{"Open admin center"}{newIncidentIds.length > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{newIncidentIds.length} new</span>}</button>}{isAuthenticated ? <button onClick={() => logout()} className="block w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-500">Sign out</button> : <button onClick={() => startLogin()} className="block w-full rounded-xl bg-[#063f3d] px-4 py-3 text-left text-sm font-bold text-white">Sign in</button>}</div>}
       </header>
 
       {view === "operations" && isAdmin && adminStatus.data?.unlocked ? (
@@ -437,7 +438,7 @@ export default function Home() {
         {reportStep === "details" && <div className="mt-7 space-y-5">
           <IncidentPhotoPicker category={selectedCategory ?? "other"} photos={photoDrafts} onChange={setPhotoDrafts} /><label className="block"><span className="text-sm font-black">What happened?</span><textarea value={form.description} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} maxLength={2000} rows={5} placeholder="Describe the situation in a few words…" className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none ring-emerald-500 transition focus:bg-white focus:ring-2" /><span className="mt-1 block text-right text-[11px] text-slate-400">{form.description.length}/2000</span></label><div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="text-sm font-black">Are people injured?</span><select value={form.injured} onChange={event => setForm(current => ({ ...current, injured: event.target.value }))} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"><option value="">Select if known</option><option value="yes">Yes</option><option value="no">No</option><option value="unknown">Not sure</option></select></label><label className="block"><span className="text-sm font-black">People affected</span><input value={form.peopleAffected} onChange={event => setForm(current => ({ ...current, peopleAffected: event.target.value }))} inputMode="numeric" maxLength={4} placeholder="e.g. 2" className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500" /></label></div><div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4"><div className="flex items-center gap-2 text-sm font-black text-cyan-950"><Phone size={16} /> How can responders reach you?</div><p className="mt-1 text-xs leading-5 text-cyan-900/70">Add a phone number or email. ECR shares it only with authorized response teams.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><label><span className="sr-only">Phone number</span><input value={form.reporterPhone} onChange={event => setForm(current => ({ ...current, reporterPhone: event.target.value }))} type="tel" inputMode="tel" maxLength={32} placeholder="Phone number" className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500" /></label><label><span className="sr-only">Email address</span><input value={form.reporterEmail} onChange={event => setForm(current => ({ ...current, reporterEmail: event.target.value }))} type="email" maxLength={320} placeholder="Email address" className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500" /></label></div></div><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setReportStep("category")} className="rounded-xl"><ArrowLeft className="mr-2" size={15} /> Back</Button><Button disabled={!canAdvanceDetails} onClick={() => setReportStep("location")} className="rounded-xl bg-[#063f3d]">Continue <ArrowRight className="ml-2" size={15} /></Button></div></div>}
         {reportStep === "location" && <div className="mt-7 space-y-5"><div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div className="flex gap-3"><span className="icon-orb grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700"><Crosshair size={18} /></span><div><p className="text-sm font-black text-emerald-950">Confirm where help is needed</p><p className="mt-1 text-xs leading-5 text-emerald-900/70">ECR asks for location permission only to route help. You can use a landmark instead.</p></div></div><Button onClick={useDeviceLocation} variant="outline" className="mt-4 w-full rounded-xl border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-100"><MapPin className="mr-2" size={16} /> Use my current location</Button></div><label className="block"><span className="text-sm font-black">Landmark or address</span><input value={form.locationLabel} onChange={event => setForm(current => ({ ...current, locationLabel: event.target.value }))} maxLength={220} placeholder="e.g. Near the central market, Lagos" className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500" /></label>{form.latitude && form.longitude && <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-500">Location captured: {form.latitude}, {form.longitude}. Review before sending.</p>}<div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setReportStep("details")} className="rounded-xl"><ArrowLeft className="mr-2" size={15} /> Back</Button><Button disabled={!canAdvanceLocation} onClick={() => setReportStep("review")} className="rounded-xl bg-[#063f3d]">Review report <ArrowRight className="ml-2" size={15} /></Button></div></div>}
-        {reportStep === "review" && <div className="mt-7 space-y-4"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Emergency type</span><span className="text-sm font-black capitalize">{selected?.label}</span></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Description</span><p className="mt-1 text-sm leading-6 text-slate-700">{form.description}</p></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Contact</span><p className="mt-1 text-sm text-slate-700">{form.reporterPhone || form.reporterEmail}</p></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Location</span><p className="mt-1 text-sm text-slate-700">{form.locationLabel || "Device location captured"}</p></div></div>{photoDrafts.length > 0 && <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4"><p className="text-sm font-black text-cyan-950">{photoDrafts.length} photo{photoDrafts.length === 1 ? "" : "s"} attached</p><ul className="mt-2 space-y-1 text-xs text-cyan-900">{photoDrafts.map(photo => <li key={photo.id}>{photo.kind === "missing_person" ? "Missing person / identifying photo" : photo.kind === "scene" ? "Incident scene / landmark" : "Other context"} · {(photo.size / (1024 * 1024)).toFixed(1)} MB</li>)}</ul><p className="mt-2 text-[11px] text-cyan-900/70">These files remain in this browser in prototype mode.</p></div>}<div className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900"><strong>Safety reminder:</strong> Do not put yourself at risk to collect photos or more detail. For immediate danger, call official emergency services.</div><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setReportStep("location")} className="rounded-xl"><ArrowLeft className="mr-2" size={15} /> Edit</Button><Button disabled={isSubmittingLocal} onClick={submitReport} className="rounded-xl bg-[#13b981] font-black text-[#022c2b] hover:bg-[#34d399]">{isSubmittingLocal ? "Saving report and photos…" : "Send emergency report"}<Siren className="ml-2" size={16} /></Button></div></div>}
+        {reportStep === "review" && <div className="mt-7 space-y-4"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Emergency type</span><span className="text-sm font-black capitalize">{selected?.label}</span></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Description</span><p className="mt-1 text-sm leading-6 text-slate-700">{form.description}</p></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Contact</span><p className="mt-1 text-sm text-slate-700">{form.reporterPhone || form.reporterEmail}</p></div><div className="mt-4 border-t border-slate-200 pt-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Location</span><p className="mt-1 text-sm text-slate-700">{form.locationLabel || "Device location captured"}</p></div></div>{photoDrafts.length > 0 && <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4"><p className="text-sm font-black text-cyan-950">{photoDrafts.length} photo{photoDrafts.length === 1 ? "" : "s"} attached</p><ul className="mt-2 space-y-1 text-xs text-cyan-900">{photoDrafts.map(photo => <li key={photo.id}>{photo.kind === "missing_person" ? "Missing person / identifying photo" : photo.kind === "scene" ? "Incident scene / landmark" : "Other context"} · {(photo.size / (1024 * 1024)).toFixed(1)} MB</li>)}</ul><p className="mt-2 text-[11px] text-cyan-900/70">Report metadata is saved to Firestore; photo file upload to Firebase Storage is not enabled yet.</p></div>}<div className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900"><strong>Safety reminder:</strong> Do not put yourself at risk to collect photos or more detail. For immediate danger, call official emergency services.</div><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setReportStep("location")} className="rounded-xl"><ArrowLeft className="mr-2" size={15} /> Edit</Button><Button disabled={isSubmittingLocal} onClick={submitReport} className="rounded-xl bg-[#13b981] font-black text-[#022c2b] hover:bg-[#34d399]">{isSubmittingLocal ? "Saving report and photos…" : "Send emergency report"}<Siren className="ml-2" size={16} /></Button></div></div>}
       </div></div>}
     </div>
   );

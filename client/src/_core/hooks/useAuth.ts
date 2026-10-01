@@ -1,19 +1,42 @@
 import { useCallback, useEffect, useState } from "react";
-import { getLocalSession, signOutLocalUser, type LocalUser } from "@/lib/localAuth";
+import { observeFirebaseUser, observeUserProfile, signOutFirebaseUser, type FirebaseProfile, type UserRole } from "@/lib/firebase";
 
-type UseAuthOptions = {
-  redirectOnUnauthenticated?: boolean;
-  redirectPath?: string;
-};
+export type AuthUser = FirebaseProfile & { id: string; role: UserRole };
+type UseAuthOptions = { redirectOnUnauthenticated?: boolean; redirectPath?: string };
+
+function profileToUser(profile: FirebaseProfile): AuthUser {
+  return { ...profile, id: profile.uid, name: profile.name || profile.email };
+}
 
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
-  const [user, setUser] = useState<LocalUser | null>(() => getLocalSession());
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    setUser(getLocalSession());
-    setLoading(false);
+    let stopProfile: (() => void) | undefined;
+    let active = true;
+    try {
+      const stopAuth = observeFirebaseUser(firebaseUser => {
+        stopProfile?.();
+        if (!firebaseUser) {
+          if (active) { setUser(null); setLoading(false); }
+          return;
+        }
+        setLoading(true);
+        stopProfile = observeUserProfile(firebaseUser.uid, profile => {
+          if (!active) return;
+          setUser(profile ? profileToUser(profile) : { uid: firebaseUser.uid, id: firebaseUser.uid, name: firebaseUser.displayName || firebaseUser.email || "ECR user", email: firebaseUser.email || "", role: "citizen", photoURL: firebaseUser.photoURL });
+          setLoading(false);
+        });
+      });
+      return () => { active = false; stopProfile?.(); stopAuth(); };
+    } catch (authError) {
+      setError(authError instanceof Error ? authError : new Error("Firebase authentication is unavailable."));
+      setLoading(false);
+      return () => undefined;
+    }
   }, []);
 
   useEffect(() => {
@@ -22,7 +45,7 @@ export function useAuth(options?: UseAuthOptions) {
   }, [loading, redirectOnUnauthenticated, redirectPath, user]);
 
   const logout = useCallback(async () => {
-    signOutLocalUser();
+    await signOutFirebaseUser();
     setUser(null);
     if (typeof window !== "undefined") window.location.href = "/";
   }, []);
@@ -30,9 +53,9 @@ export function useAuth(options?: UseAuthOptions) {
   return {
     user,
     loading,
-    error: null,
+    error,
     isAuthenticated: Boolean(user),
-    refresh: async () => setUser(getLocalSession()),
+    refresh: async () => undefined,
     logout,
   };
 }
