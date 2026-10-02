@@ -1,5 +1,7 @@
 # ECR Implementation Roadmap
 
+> **Current status (October 2026):** This roadmap began as the local-first prototype plan. The active implementation now uses Firebase Auth and Firestore for the browser report/admin path, has a dedicated `admins` collection, and includes a Capacitor Android shell with a successfully built debug APK. Use [Android-first mobile readiness](./ANDROID-FIRST-MOBILE-READINESS.md) and [Android device testing](./ANDROID-DEVICE-TESTING.md) for current Android gates. The historical prototype warnings below remain useful as a record of earlier assumptions but do not describe every current implementation detail.
+
 ## Purpose
 
 This roadmap converts the ECR Pilot MVP PRD into an ordered implementation plan. The current repository is a local-first prototype. Browser storage is intentionally being used to validate the citizen and dispatcher workflows before Firestore, production authentication, notifications, and pilot operations are introduced.

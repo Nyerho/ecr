@@ -45,7 +45,7 @@ adb devices
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The current sandbox has Java and Gradle but does not have the Android SDK or `adb`, so it cannot produce the APK here. The source project is ready for Android Studio.
+The sandbox now has Java, Gradle, Android SDK API 36, build tools, and `adb`. The debug APK has already been produced here. The only unavailable step is direct installation onto a physical phone because no Android device is connected to the sandbox.
 
 ## Location testing checklist
 

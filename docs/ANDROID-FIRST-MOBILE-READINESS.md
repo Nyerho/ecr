@@ -11,7 +11,7 @@ This document tracks the work needed to turn ECR into a full Android application
 
 ## Preparation items 1–10
 
-### 1. Prepare the current web app for mobile — started
+### 1. Prepare the current web app for mobile — substantially complete
 
 Completed:
 
@@ -26,7 +26,7 @@ Still required:
 - Check keyboard, rotation, modal, and safe-area behavior.
 - Review all fixed floating controls against Android navigation bars.
 
-### 2. Add Capacitor — scaffolded
+### 2. Add Capacitor — complete for debug beta builds
 
 Completed:
 
@@ -35,10 +35,11 @@ Completed:
 - Generated the `android/` project.
 - Added `cap:sync`, `android:open`, and `android:run` scripts.
 
-Blocked in this sandbox:
+Completed in the sandbox:
 
-- Android SDK, Gradle, and `adb` are not installed, so an APK cannot be built or installed here yet.
-- Android Studio or a configured Android build machine is required for the first device build.
+- Android SDK API 36, build tools, platform tools, Java JDK, and Gradle are configured.
+- A debug APK was built successfully at `android/app/build/outputs/apk/debug/app-debug.apk`.
+- No physical Android device is connected to the sandbox, so installation on a phone still requires downloading the APK or connecting a device to a computer running `adb`.
 
 ### 3. Add native capabilities — planned, not yet enabled
 
@@ -120,7 +121,7 @@ The Android app must not contain Firebase Admin credentials or private keys. Bef
 
 Create separate Firebase environments for development, beta/staging, and production. The current Vercel/web environment must remain available for demonstrations and must not be confused with the Android release environment.
 
-### 10. Real-device testing — required before development phases
+### 10. Real-device testing — the next active gate
 
 Test the complete flow on real Android devices in the Agbarho–Ughelli pilot area:
 
@@ -140,12 +141,11 @@ Test the complete flow on real Android devices in the Agbarho–Ughelli pilot ar
 
 Do not move to native feature development until:
 
-1. Android Studio or another Android build environment is available.
-2. A debug APK can be generated.
-3. The APK can run on at least one real Android device.
-4. The web demo still builds and deploys independently.
-5. Firebase development/beta environment boundaries are documented.
-6. Location, notification, offline, security, and release decisions are approved.
+1. The debug APK is installed and runs on at least one real Android device.
+2. The web demo still builds and deploys independently.
+3. Firebase development/beta environment boundaries are documented.
+4. Location, notification, offline, security, and release decisions are approved.
+5. Native capabilities and production release signing are completed before public release.
 
 ## Useful commands
 
