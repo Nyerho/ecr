@@ -4,7 +4,7 @@ const WHATSAPP_REPORT_CHAT = "https://wa.me/2348100760542?text=Hello%20ECR%2C%20
 
 export default function FloatingWhatsApp() {
   return (
-    <div className="fixed bottom-5 right-5 z-40 sm:bottom-7 sm:right-7">
+    <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 sm:bottom-7 sm:right-7">
       <span className="pointer-events-none absolute -inset-1 animate-ping rounded-full bg-emerald-400/30" />
       <a
         href={WHATSAPP_REPORT_CHAT}

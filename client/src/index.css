@@ -17,8 +17,8 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--background); }
-body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--background); color: var(--foreground); }
+html { min-width: 320px; background: var(--background); overflow-x: hidden; }
+body, #root { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--background); color: var(--foreground); overflow-x: hidden; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 .mobile-safe-top { padding-top: max(0px, env(safe-area-inset-top)); }
 .mobile-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }

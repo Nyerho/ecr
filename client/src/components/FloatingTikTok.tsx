@@ -10,7 +10,7 @@ function TikTokMark() {
 
 export default function FloatingTikTok() {
   return (
-    <div className="fixed bottom-24 right-5 z-40 sm:bottom-28 sm:right-7">
+    <div className="fixed bottom-[max(6rem,calc(env(safe-area-inset-bottom)+5rem))] right-5 z-40 sm:bottom-28 sm:right-7">
       <a
         href={TIKTOK_PROFILE}
         target="_blank"
