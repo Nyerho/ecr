@@ -18,6 +18,7 @@ import {
 } from "@/lib/firebase";
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
+import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
 import IncidentPhotoPicker from "@/components/IncidentPhotoPicker";
@@ -1099,6 +1100,7 @@ export default function Home() {
         </div>
       </section>
 
+      <CommunityChat />
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <span>Emergency Community Response · Pilot interface</span>

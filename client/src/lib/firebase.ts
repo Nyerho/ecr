@@ -16,6 +16,7 @@ import {
   doc,
   getDoc,
   getFirestore,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -248,6 +249,95 @@ export type PublicIncidentTracking = {
   }>;
   updatedAt?: unknown;
 };
+export type CommunityMessage = {
+  id: string;
+  kind: "alert" | "comment" | "admin_update";
+  text: string;
+  authorUid: string;
+  publicReference?: string | null;
+  category?: string | null;
+  locationLabel?: string | null;
+  visibility: "public" | "hidden";
+  createdAt?: unknown;
+};
+
+function subscribeToChatSource(
+  source: ReturnType<typeof query>,
+  callback: (messages: CommunityMessage[]) => void,
+  onError: (error: unknown) => void
+) {
+  return onSnapshot(
+    source,
+    snapshot => {
+      const messages = snapshot.docs.map(
+        message =>
+          ({
+            id: message.id,
+            ...(message.data() as DocumentData),
+          }) as CommunityMessage
+      );
+      callback(
+        messages.sort(
+          (left, right) => toMillis(left.createdAt) - toMillis(right.createdAt)
+        )
+      );
+    },
+    onError
+  );
+}
+
+export function subscribeToCommunityChat(
+  callback: (messages: CommunityMessage[]) => void,
+  onError: (error: unknown) => void
+) {
+  const database = requireFirestore();
+  return subscribeToChatSource(
+    query(
+      collection(database, "chatMessages"),
+      where("visibility", "==", "public"),
+      limit(100)
+    ),
+    callback,
+    onError
+  );
+}
+
+export function subscribeToAdminCommunityChat(
+  callback: (messages: CommunityMessage[]) => void,
+  onError: (error: unknown) => void
+) {
+  const database = requireFirestore();
+  return subscribeToChatSource(
+    query(collection(database, "chatMessages"), limit(200)),
+    callback,
+    onError
+  );
+}
+
+export async function sendCommunityMessage(input: {
+  text: string;
+  kind?: CommunityMessage["kind"];
+  publicReference?: string;
+}) {
+  const user = await ensureAnonymousFirebaseUser();
+  const text = input.text.trim().slice(0, 800);
+  if (!text) throw new Error("Write a short message before sending.");
+  return addDoc(collection(requireFirestore(), "chatMessages"), {
+    kind: input.kind ?? "comment",
+    text,
+    authorUid: user.uid,
+    publicReference: input.publicReference ?? null,
+    visibility: "public",
+    createdAt: serverTimestamp(),
+  });
+}
+
+export function hideCommunityMessage(id: string) {
+  return updateDoc(doc(requireFirestore(), "chatMessages", id), {
+    visibility: "hidden",
+    moderatedAt: serverTimestamp(),
+  });
+}
 
 export function trackPublicIncident(
   reference: string,
@@ -397,6 +487,17 @@ export async function createFirestoreIncident(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  const chatReference = doc(collection(database, "chatMessages"));
+  batch.set(chatReference, {
+    kind: "alert",
+    text: `New ${input.category.replaceAll("_", " ")} alert reported${input.locationLabel ? ` near ${input.locationLabel}` : ""}. Reference ${reference}. Follow the public status for updates.`,
+    authorUid: input.reporterUid,
+    publicReference: reference,
+    category: input.category,
+    locationLabel: input.locationLabel ?? null,
+    visibility: "public",
+    createdAt: serverTimestamp(),
+  });
   await batch.commit();
   return { id: documentReference.id, publicReference: reference };
 }
@@ -449,6 +550,15 @@ export async function updateFirestoreIncident(
     },
     { merge: true }
   );
+  const chatReference = doc(collection(database, "chatMessages"));
+  batch.set(chatReference, {
+    kind: "admin_update",
+    text: `${publicReference} update: ${statusEvent.label}.`,
+    authorUid: actorUid,
+    publicReference: publicReference.trim().toUpperCase(),
+    visibility: "public",
+    createdAt: serverTimestamp(),
+  });
   await batch.commit();
 }
 

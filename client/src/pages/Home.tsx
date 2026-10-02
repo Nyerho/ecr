@@ -22,6 +22,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { startLogin } from "@/const";
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
+import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
 import {
@@ -521,6 +522,7 @@ export default function Home() {
           </div>
         </section>
         <PublicReportTracker />
+        <CommunityChat />
 
         <section
           id="how-it-works"

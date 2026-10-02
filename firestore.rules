@@ -38,6 +38,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /chatMessages/{messageId} {
+      allow read: if isAdmin() || resource.data.visibility == 'public';
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.visibility == 'public'
+        && request.resource.data.kind in ['alert', 'comment', 'admin_update']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 800;
+      allow update, delete: if isAdmin();
+    }
+
     match /organizations/{organizationId} {
       allow read, write: if isAdmin();
     }

@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   Mail,
+  MessageCircle,
   LockKeyhole,
   MapPin,
   RefreshCw,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import BrandLogo from "@/components/BrandLogo";
+import CommunityChat from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import {
   firebaseConfigured,
@@ -52,7 +54,13 @@ type AuditLog = {
   resourceId?: string;
   createdAt?: unknown;
 };
-type Tab = "overview" | "incidents" | "users" | "organizations" | "audit";
+type Tab =
+  | "overview"
+  | "incidents"
+  | "community"
+  | "users"
+  | "organizations"
+  | "audit";
 const roles: UserRole[] = [
   "citizen",
   "dispatcher",
@@ -267,6 +275,7 @@ export default function Admin() {
     [
       { key: "overview", label: "Overview", icon: Activity },
       { key: "incidents", label: "Incidents", icon: FileText },
+      { key: "community", label: "Community room", icon: MessageCircle },
       { key: "users", label: "Users & roles", icon: Users },
       { key: "organizations", label: "Organizations", icon: Building2 },
       { key: "audit", label: "Audit log", icon: ShieldCheck },
@@ -368,6 +377,7 @@ export default function Admin() {
                   onUpdateStatus={updateIncidentStatus}
                 />
               )}
+              {tab === "community" && <CommunityChat adminMode />}
               {tab === "users" && (
                 <UserTable users={users} onChangeRole={changeRole} />
               )}
