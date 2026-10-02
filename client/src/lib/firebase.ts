@@ -14,6 +14,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -22,6 +23,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
   type Unsubscribe,
@@ -235,6 +237,59 @@ export type FirestoreIncident = {
     newValue?: string | null;
   }>;
 };
+export type PublicIncidentTracking = {
+  publicReference: string;
+  category: string;
+  status: string;
+  priority: string;
+  events?: Array<{
+    label: string;
+    createdAt?: unknown;
+  }>;
+  updatedAt?: unknown;
+};
+
+export function trackPublicIncident(
+  reference: string,
+  callback: (incident: PublicIncidentTracking | null) => void,
+  onError: (error: unknown) => void
+) {
+  const database = requireFirestore();
+  const trackingRef = doc(
+    database,
+    "publicTracking",
+    reference.trim().toUpperCase()
+  );
+  return onSnapshot(
+    trackingRef,
+    snapshot => {
+      callback(
+        snapshot.exists() ? (snapshot.data() as PublicIncidentTracking) : null
+      );
+    },
+    onError
+  );
+}
+
+export async function ensurePublicTrackingRecord(incident: FirestoreIncident) {
+  const database = requireFirestore();
+  const reference = incident.publicReference.trim().toUpperCase();
+  const trackingRef = doc(database, "publicTracking", reference);
+  const existing = await getDoc(trackingRef);
+  if (existing.exists()) return;
+  await setDoc(trackingRef, {
+    public: true,
+    publicReference: reference,
+    category: incident.category,
+    status: incident.status,
+    priority: incident.priority,
+    events: (incident.events ?? []).map(event => ({
+      label: event.label,
+      createdAt: event.createdAt ?? null,
+    })),
+    updatedAt: incident.updatedAt ?? null,
+  });
+}
 
 export function subscribeToMyIncidents(
   uid: string,
@@ -315,7 +370,10 @@ export async function createFirestoreIncident(
       reporterEmail: input.reporterEmail,
     }).filter(([, value]) => value !== undefined)
   );
-  const documentReference = await addDoc(collection(database, "incidents"), {
+  const documentReference = doc(collection(database, "incidents"));
+  const trackingReference = doc(database, "publicTracking", reference);
+  const batch = writeBatch(database);
+  batch.set(documentReference, {
     reporterUid: input.reporterUid,
     category: input.category,
     description: input.description,
@@ -328,6 +386,18 @@ export async function createFirestoreIncident(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  batch.set(trackingReference, {
+    publicReference: reference,
+    category: input.category,
+    status: "submitted",
+    priority: "medium",
+    events: [{ label: "Report submitted", createdAt: nowEvent.createdAt }],
+    public: true,
+    ownerUid: input.reporterUid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  await batch.commit();
   return { id: documentReference.id, publicReference: reference };
 }
 
@@ -338,25 +408,48 @@ export async function updateFirestoreIncident(
   >,
   actorUid: string,
   expectedVersion: number,
-  previousStatus: string
+  previousStatus: string,
+  publicReference: string
 ) {
   const database = requireFirestore();
   const incidentRef = doc(database, "incidents", id);
-  await updateDoc(incidentRef, {
+  const trackingRef = doc(
+    database,
+    "publicTracking",
+    publicReference.trim().toUpperCase()
+  );
+  const statusEvent = {
+    label: changes.status
+      ? `Status updated to ${changes.status.replaceAll("_", " ")}`
+      : "Incident updated",
+    actorUid,
+    previousValue: previousStatus,
+    newValue: changes.status ?? null,
+    createdAt: new Date().toISOString(),
+  };
+  const batch = writeBatch(database);
+  batch.update(incidentRef, {
     ...changes,
     version: expectedVersion + 1,
     updatedAt: serverTimestamp(),
-    events: arrayUnion({
-      label: changes.status
-        ? `Status updated to ${changes.status.replaceAll("_", " ")}`
-        : "Incident updated",
-      actorUid,
-      previousValue: previousStatus,
-      newValue: changes.status ?? null,
-      createdAt: new Date().toISOString(),
-    }),
+    events: arrayUnion(statusEvent),
     lastAction: { actorUid, changes, createdAt: serverTimestamp() },
   });
+  batch.set(
+    trackingRef,
+    {
+      public: true,
+      publicReference,
+      status: changes.status,
+      events: arrayUnion({
+        label: statusEvent.label,
+        createdAt: statusEvent.createdAt,
+      }),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+  await batch.commit();
 }
 
 export async function createFirestoreOrganization(

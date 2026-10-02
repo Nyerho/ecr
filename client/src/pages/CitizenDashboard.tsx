@@ -574,7 +574,7 @@ export default function Home() {
 
   async function copyReportReference() {
     if (!reportReceipt) return;
-    const text = `ECR emergency report ${reportReceipt.reference}. Keep this reference for follow-up.`;
+    const text = reportReceipt.reference;
     try {
       await navigator.clipboard.writeText(text);
       setReceiptCopied(true);
@@ -1233,7 +1233,7 @@ export default function Home() {
                 className="flex-1 rounded-xl"
               >
                 {receiptCopied ? <Check size={15} /> : <Copy size={15} />}
-                {receiptCopied ? "Copied" : "Copy reference"}
+                {receiptCopied ? "Copied" : "Copy report ID"}
               </Button>
               <Button
                 onClick={() => setReportReceipt(null)}

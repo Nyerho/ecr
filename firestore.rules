@@ -31,6 +31,12 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+    match /publicTracking/{reference} {
+      allow create: if (isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid)) && request.resource.data.public == true;
+      allow read: if resource.data.public == true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
 
     match /organizations/{organizationId} {
       allow read, write: if isAdmin();

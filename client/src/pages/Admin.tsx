@@ -3,8 +3,10 @@ import { Link, useLocation } from "wouter";
 import {
   Activity,
   Building2,
+  Check,
   CheckCircle2,
   Clock3,
+  Copy,
   ExternalLink,
   FileText,
   Mail,
@@ -12,6 +14,7 @@ import {
   MapPin,
   RefreshCw,
   ShieldCheck,
+  Share2,
   Phone,
   Users,
   UserRound,
@@ -22,6 +25,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import {
   firebaseConfigured,
+  ensurePublicTrackingRecord,
   subscribeToAdminCollection,
   updateFirestoreIncident,
   updateFirestoreUserRole,
@@ -127,6 +131,9 @@ export default function Admin() {
     const stops = [
       subscribeToAdminCollection<FirestoreIncident>("incidents", rows => {
         setIncidents(rows);
+        void Promise.all(rows.map(ensurePublicTrackingRecord)).catch(
+          () => undefined
+        );
         markReady();
       }),
       subscribeToAdminCollection<FirebaseProfile>("users", rows => {
@@ -223,7 +230,8 @@ export default function Admin() {
         { status },
         user.uid,
         incident.version,
-        incident.status
+        incident.status,
+        incident.publicReference
       );
       await writeFirestoreAudit({
         actorUid: user.uid,
@@ -701,6 +709,19 @@ function IncidentDetail({
   onClose: () => void;
   onUpdateStatus: (incident: FirestoreIncident, status: string) => void;
 }) {
+  const [copiedOutreach, setCopiedOutreach] = useState(false);
+  const publicUrl =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}/?report=${encodeURIComponent(incident.publicReference)}#track-report`;
+  const outreachText = `ECR emergency update\n${incident.publicReference} · ${incident.category.replaceAll("_", " ")} · ${incident.status.replaceAll("_", " ")}\nLocation: ${incidentLocation(incident)}\nTrack status: ${publicUrl}`;
+
+  async function copyOutreach() {
+    await navigator.clipboard?.writeText(outreachText);
+    setCopiedOutreach(true);
+    window.setTimeout(() => setCopiedOutreach(false), 1800);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-2xl sm:p-7">
@@ -794,6 +815,74 @@ function IncidentDetail({
             <MapPin size={15} className="text-emerald-600" />{" "}
             {incidentLocation(incident)}
           </p>
+        </div>
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
+              <Share2 size={17} />
+            </span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-800">
+                Public outreach
+              </p>
+              <p className="mt-1 text-xs leading-5 text-violet-950/75">
+                Share only the emergency category, status, location, reference,
+                and public tracking link. Reporter biodata is never included.
+                Platforms still require an authorized human to review and
+                publish.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={copyOutreach}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-violet-700 px-3 py-2 text-xs font-black text-white hover:bg-violet-800"
+            >
+              {copiedOutreach ? <Check size={14} /> : <Copy size={14} />}
+              {copiedOutreach ? "Copied" : "Copy safe update"}
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(outreachText)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-xl bg-[#25D366] px-3 py-2 text-xs font-black text-white hover:bg-[#1ebe5d]"
+            >
+              WhatsApp
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(outreachText)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-700"
+            >
+              X / Twitter
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}&quote=${encodeURIComponent(outreachText)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-xl bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800"
+            >
+              Facebook
+            </a>
+            <a
+              href="https://www.tiktok.com/@emergency_com_response"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-xl bg-black px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+            >
+              TikTok page
+            </a>
+            <a
+              href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white hover:bg-emerald-800"
+            >
+              WhatsApp channel
+            </a>
+          </div>
         </div>
         <div className="mt-4 rounded-2xl border border-border bg-card p-4">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">

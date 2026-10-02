@@ -1,7 +1,9 @@
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   Clock3,
+  Copy,
   Globe2,
   HeartPulse,
   LockKeyhole,
@@ -10,17 +12,22 @@ import {
   MessageCircle,
   Phone,
   Radio,
+  Search,
   ShieldCheck,
   Siren,
   UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { startLogin } from "@/const";
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
+import {
+  trackPublicIncident,
+  type PublicIncidentTracking,
+} from "@/lib/firebase";
 
 const pillars = [
   {
@@ -65,6 +72,182 @@ const steps = [
     "Track the response status without repeatedly calling for updates.",
   ],
 ];
+
+function trackingDate(value: unknown) {
+  if (!value) return "—";
+  const date =
+    typeof value === "object" && value !== null && "toDate" in value
+      ? (value as { toDate: () => Date }).toDate()
+      : new Date(value as string | number);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+function PublicReportTracker() {
+  const initialReference =
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search)
+          .get("report")
+          ?.toUpperCase() ?? "");
+  const [input, setInput] = useState(initialReference);
+  const [reference, setReference] = useState(initialReference);
+  const [incident, setIncident] = useState<PublicIncidentTracking | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!reference) return;
+    setIncident(null);
+    setError("");
+    setLoading(true);
+    return trackPublicIncident(
+      reference,
+      tracked => {
+        setIncident(tracked);
+        setLoading(false);
+        if (!tracked)
+          setError("No public tracking record was found for that report ID.");
+      },
+      () => {
+        setLoading(false);
+        setError("This report cannot be tracked right now. Please try again.");
+      }
+    );
+  }, [reference]);
+
+  function track(event: FormEvent) {
+    event.preventDefault();
+    const normalized = input.trim().toUpperCase();
+    if (!/^ECR-\d{4}-[A-Z0-9]+$/.test(normalized)) {
+      setError(
+        "Enter the report ID exactly as shown, for example ECR-2026-E823DD."
+      );
+      setIncident(null);
+      return;
+    }
+    setReference(normalized);
+  }
+
+  async function copyReference() {
+    if (!reference) return;
+    await navigator.clipboard?.writeText(reference);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <section
+      id="track-report"
+      className="border-y border-emerald-100 bg-emerald-50/60"
+    >
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+            Track without an account
+          </p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+            Follow your report from one reference ID.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
+            Copy the report ID from your receipt, paste it here, and see the
+            live operational timeline. Reporter contact details are never shown
+            in this public view.
+          </p>
+          <form
+            onSubmit={track}
+            className="mt-6 flex flex-col gap-2 sm:flex-row"
+          >
+            <label className="sr-only" htmlFor="public-report-reference">
+              Report ID
+            </label>
+            <input
+              id="public-report-reference"
+              value={input}
+              onChange={event => setInput(event.target.value)}
+              placeholder="ECR-2026-E823DD"
+              className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:bg-[#075b55]"
+            >
+              <Search size={16} /> Track report
+            </button>
+          </form>
+          {error && (
+            <p className="mt-3 text-sm font-bold text-rose-700">{error}</p>
+          )}
+        </div>
+        <div className="rounded-3xl border border-white bg-white/80 p-5 shadow-sm sm:p-6">
+          {!reference && (
+            <div className="grid min-h-48 place-items-center text-center text-sm text-slate-500">
+              <div>
+                <Clock3 className="mx-auto text-emerald-600" size={25} />
+                <p className="mt-3 font-bold">
+                  Your status timeline will appear here.
+                </p>
+              </div>
+            </div>
+          )}
+          {reference && loading && (
+            <div className="grid min-h-48 place-items-center text-sm font-bold text-slate-500">
+              Loading live report status…
+            </div>
+          )}
+          {reference && incident && !loading && (
+            <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                    {incident.publicReference}
+                  </p>
+                  <h3 className="mt-1 text-xl font-black capitalize text-slate-950">
+                    {incident.category.replaceAll("_", " ")}
+                  </h3>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black capitalize text-emerald-700">
+                  {incident.status.replaceAll("_", " ")}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
+                <span>Last updated {trackingDate(incident.updatedAt)}</span>
+                <button
+                  type="button"
+                  onClick={copyReference}
+                  className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900"
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Copied" : "Copy ID"}
+                </button>
+              </div>
+              <div className="mt-5 space-y-4">
+                {(incident.events ?? [])
+                  .slice()
+                  .reverse()
+                  .map((event, index) => (
+                    <div key={`${event.label}-${index}`} className="flex gap-3">
+                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-500" />
+                      <div>
+                        <p className="text-sm font-black text-slate-800">
+                          {event.label}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {trackingDate(event.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -337,6 +520,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <PublicReportTracker />
 
         <section
           id="how-it-works"
