@@ -51,16 +51,16 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
               />
             </div>
             <div className="mt-10">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-[#063f3d]">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#13b981] text-[#063f3d]">
                 <ShieldCheck size={25} />
               </div>
-              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-emerald-300">
+              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#13b981]">
                 Emergency Community Response
               </p>
               <h1 className="mt-4 text-4xl font-black leading-tight">
                 A safer response loop starts with a trusted account.
               </h1>
-              <p className="mt-5 max-w-sm text-sm leading-7 text-emerald-50/75">
+              <p className="mt-5 max-w-sm text-sm leading-7 text-white">
                 Sign in securely, submit a report, and track your incident
                 history from any device.
               </p>
