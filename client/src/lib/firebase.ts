@@ -218,12 +218,27 @@ export function subscribeToMyIncidents(
   const database = requireFirestore();
   const incidentsQuery = query(
     collection(database, "incidents"),
-    where("reporterUid", "==", uid),
-    orderBy("createdAt", "desc")
+    where("reporterUid", "==", uid)
   );
-  return onSnapshot(incidentsQuery, snapshot =>
-    callback(snapshot.docs.map(mapFirestoreDocument) as FirestoreIncident[])
-  );
+  return onSnapshot(incidentsQuery, snapshot => {
+    const incidents = snapshot.docs
+      .map(mapFirestoreDocument)
+      .sort(
+        (left, right) => toMillis(right.createdAt) - toMillis(left.createdAt)
+      );
+    callback(incidents as FirestoreIncident[]);
+  });
+}
+
+function toMillis(value: unknown) {
+  if (value && typeof value === "object" && "toMillis" in value) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" || typeof value === "number") {
+    return new Date(value).getTime();
+  }
+  return 0;
 }
 
 export function subscribeToAdminCollection<T extends DocumentData>(
@@ -264,8 +279,20 @@ export async function createFirestoreIncident(
     newValue: "submitted",
     createdAt: serverTimestamp(),
   };
+  const optionalFields = Object.fromEntries(
+    Object.entries({
+      locationLabel: input.locationLabel,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      reporterPhone: input.reporterPhone,
+      reporterEmail: input.reporterEmail,
+    }).filter(([, value]) => value !== undefined)
+  );
   const documentReference = await addDoc(collection(database, "incidents"), {
-    ...input,
+    reporterUid: input.reporterUid,
+    category: input.category,
+    description: input.description,
+    ...optionalFields,
     publicReference: reference,
     status: "submitted",
     priority: "medium",
