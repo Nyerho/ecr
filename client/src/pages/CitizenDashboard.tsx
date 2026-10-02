@@ -12,6 +12,7 @@ import {
   createFirestoreIncident,
   ensureAnonymousFirebaseUser,
   firebaseConfigured,
+  reportSubmissionMessage,
   subscribeToMyIncidents,
   type FirestoreIncident,
 } from "@/lib/firebase";
@@ -556,9 +557,7 @@ export default function Home() {
       setForm(emptyForm());
       setPhotoDrafts([]);
     } catch (error) {
-      toast.error(
-        "We could not send the report. Please check your connection and try again."
-      );
+      toast.error(reportSubmissionMessage(error));
     } finally {
       setIsSubmittingLocal(false);
     }

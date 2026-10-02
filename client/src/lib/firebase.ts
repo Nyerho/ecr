@@ -69,6 +69,29 @@ export function firebaseSetupMessage() {
     : "This service is temporarily unavailable. Please try again shortly.";
 }
 
+export function reportSubmissionMessage(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  if (code === "auth/operation-not-allowed") {
+    return "Guest reporting is not enabled yet. Please enable Anonymous sign-in in the service settings.";
+  }
+  if (code === "auth/network-request-failed" || code === "unavailable") {
+    return "The report service is temporarily unavailable. Please try again.";
+  }
+  if (code === "permission-denied") {
+    return "The report was rejected by the service rules. Please contact the administrator.";
+  }
+  if (code === "failed-precondition") {
+    return "The report service needs an administrator configuration update.";
+  }
+  if (code === "invalid-argument") {
+    return "Some report details are invalid. Please review them and try again.";
+  }
+  return "We could not send the report right now. Please try again.";
+}
+
 function requireAuth() {
   if (!firebaseAuth) throw new Error(firebaseSetupMessage());
   return firebaseAuth;
