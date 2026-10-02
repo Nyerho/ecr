@@ -60,7 +60,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
               <h1 className="mt-4 text-4xl font-black leading-tight">
                 A safer response loop starts with a trusted account.
               </h1>
-              <p className="mt-5 max-w-sm text-sm leading-7 text-white">
+              <p className="auth-hero-copy mt-5 max-w-sm text-sm leading-7 text-white">
                 Sign in securely, submit a report, and track your incident
                 history from any device.
               </p>
