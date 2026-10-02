@@ -300,7 +300,7 @@ export async function createFirestoreIncident(
     actorUid: input.reporterUid,
     previousValue: null,
     newValue: "submitted",
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
   };
   const optionalFields = Object.fromEntries(
     Object.entries({
