@@ -18,7 +18,10 @@ export default function CookieConsent() {
 
   function choose(choice: ConsentChoice) {
     try {
-      window.localStorage.setItem(CONSENT_KEY, JSON.stringify({ choice, savedAt: new Date().toISOString() }));
+      window.localStorage.setItem(
+        CONSENT_KEY,
+        JSON.stringify({ choice, savedAt: new Date().toISOString() })
+      );
     } catch {
       // The banner can still be dismissed when browser storage is unavailable.
     }
@@ -39,17 +42,41 @@ export default function CookieConsent() {
           <Cookie size={20} />
         </span>
         <div className="min-w-0">
-          <h2 id="cookie-consent-title" className="text-sm font-black text-slate-950">Cookies and browser storage</h2>
+          <h2
+            id="cookie-consent-title"
+            className="text-sm font-black text-slate-950"
+          >
+            Cookies and browser storage
+          </h2>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            ECR uses essential browser storage to keep Firebase sign-in, consent choices, and app preferences working. It does not sell personal information. Optional analytics will only be used if enabled in a future release.
+            ECR uses essential browser storage to keep secure sign-in, consent
+            choices, and app preferences working. It does not sell personal
+            information. Optional analytics will only be used if enabled in a
+            future release.
           </p>
           <p className="mt-2 inline-flex items-start gap-1.5 text-[11px] leading-4 text-slate-500">
-            <ShieldCheck size={13} className="mt-0.5 shrink-0 text-emerald-600" />
-            You can use the emergency contact directory and reporting tools without accepting optional analytics.
+            <ShieldCheck
+              size={13}
+              className="mt-0.5 shrink-0 text-emerald-600"
+            />
+            You can use the emergency contact directory and reporting tools
+            without accepting optional analytics.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => choose("essential")} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800">Essential only</button>
-            <button type="button" onClick={() => choose("all")} className="rounded-xl bg-[#063f3d] px-3 py-2 text-xs font-black text-white transition hover:bg-[#075b55]">Accept</button>
+            <button
+              type="button"
+              onClick={() => choose("essential")}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
+            >
+              Essential only
+            </button>
+            <button
+              type="button"
+              onClick={() => choose("all")}
+              className="rounded-xl bg-[#063f3d] px-3 py-2 text-xs font-black text-white transition hover:bg-[#075b55]"
+            >
+              Accept
+            </button>
           </div>
         </div>
       </div>

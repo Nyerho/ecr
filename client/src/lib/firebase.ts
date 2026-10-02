@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -25,7 +26,13 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
-export type UserRole = "citizen" | "dispatcher" | "coordinator" | "responder" | "moderator" | "admin";
+export type UserRole =
+  | "citizen"
+  | "dispatcher"
+  | "coordinator"
+  | "responder"
+  | "moderator"
+  | "admin";
 export type FirebaseProfile = {
   uid: string;
   name: string;
@@ -48,14 +55,18 @@ const config = {
 };
 
 export const firebaseConfigured = Object.values(config).every(Boolean);
-const app = firebaseConfigured ? (getApps().length ? getApp() : initializeApp(config)) : null;
+const app = firebaseConfigured
+  ? getApps().length
+    ? getApp()
+    : initializeApp(config)
+  : null;
 export const firebaseAuth = app ? getAuth(app) : null;
 export const firestore = app ? getFirestore(app) : null;
 
 export function firebaseSetupMessage() {
   return firebaseConfigured
     ? ""
-    : "Firebase is not configured for this environment. Add the VITE_FIREBASE_* values before using authentication or Firestore.";
+    : "This service is temporarily unavailable. Please try again shortly.";
 }
 
 function requireAuth() {
@@ -67,12 +78,22 @@ function requireFirestore() {
   return firestore;
 }
 
-export function observeFirebaseUser(callback: (user: FirebaseUser | null) => void): Unsubscribe {
+export function observeFirebaseUser(
+  callback: (user: FirebaseUser | null) => void
+): Unsubscribe {
   return onAuthStateChanged(requireAuth(), callback);
 }
 
-export async function registerFirebaseUser(input: { name: string; email: string; password: string }) {
-  const credential = await createUserWithEmailAndPassword(requireAuth(), input.email.trim().toLowerCase(), input.password);
+export async function registerFirebaseUser(input: {
+  name: string;
+  email: string;
+  password: string;
+}) {
+  const credential = await createUserWithEmailAndPassword(
+    requireAuth(),
+    input.email.trim().toLowerCase(),
+    input.password
+  );
   await updateProfile(credential.user, { displayName: input.name.trim() });
   await setDoc(doc(requireFirestore(), "users", credential.user.uid), {
     uid: credential.user.uid,
@@ -87,35 +108,80 @@ export async function registerFirebaseUser(input: { name: string; email: string;
   return credential.user;
 }
 
+export async function ensureAnonymousFirebaseUser() {
+  const auth = requireAuth();
+  if (auth.currentUser) return auth.currentUser;
+  const credential = await signInAnonymously(auth);
+  return credential.user;
+}
 export function signInFirebaseUser(email: string, password: string) {
-  return signInWithEmailAndPassword(requireAuth(), email.trim().toLowerCase(), password);
+  return signInWithEmailAndPassword(
+    requireAuth(),
+    email.trim().toLowerCase(),
+    password
+  );
 }
 
 export function signOutFirebaseUser() {
   return signOut(requireAuth());
 }
 
-export function observeUserProfile(uid: string, callback: (profile: FirebaseProfile | null) => void) {
+export function observeUserProfile(
+  uid: string,
+  callback: (profile: FirebaseProfile | null) => void
+) {
   const database = requireFirestore();
   let userProfile: FirebaseProfile | null = null;
   let adminProfile: Partial<FirebaseProfile> | null = null;
   const emit = () => {
-    if (userProfile) callback({ ...userProfile, ...(adminProfile ? { ...adminProfile, role: "admin" } : {}) } as FirebaseProfile);
-    else if (adminProfile) callback({ uid, name: adminProfile.name ?? "ECR Administrator", email: adminProfile.email ?? "", role: "admin", ...adminProfile } as FirebaseProfile);
+    if (userProfile)
+      callback({
+        ...userProfile,
+        ...(adminProfile ? { ...adminProfile, role: "admin" } : {}),
+      } as FirebaseProfile);
+    else if (adminProfile)
+      callback({
+        uid,
+        name: adminProfile.name ?? "ECR Administrator",
+        email: adminProfile.email ?? "",
+        role: "admin",
+        ...adminProfile,
+      } as FirebaseProfile);
     else callback(null);
   };
-  const stopUser = onSnapshot(doc(database, "users", uid), snapshot => {
-    userProfile = snapshot.exists() ? ({ uid: snapshot.id, ...snapshot.data() } as FirebaseProfile) : null;
-    emit();
-  }, emit);
-  const stopAdmin = onSnapshot(doc(database, "admins", uid), snapshot => {
-    adminProfile = snapshot.exists() && snapshot.data().active !== false ? ({ uid: snapshot.id, ...snapshot.data() } as Partial<FirebaseProfile>) : null;
-    emit();
-  }, emit);
-  return () => { stopUser(); stopAdmin(); };
+  const stopUser = onSnapshot(
+    doc(database, "users", uid),
+    snapshot => {
+      userProfile = snapshot.exists()
+        ? ({ uid: snapshot.id, ...snapshot.data() } as FirebaseProfile)
+        : null;
+      emit();
+    },
+    emit
+  );
+  const stopAdmin = onSnapshot(
+    doc(database, "admins", uid),
+    snapshot => {
+      adminProfile =
+        snapshot.exists() && snapshot.data().active !== false
+          ? ({
+              uid: snapshot.id,
+              ...snapshot.data(),
+            } as Partial<FirebaseProfile>)
+          : null;
+      emit();
+    },
+    emit
+  );
+  return () => {
+    stopUser();
+    stopAdmin();
+  };
 }
 
-export function mapFirestoreDocument<T extends DocumentData>(snapshot: QueryDocumentSnapshot<T>) {
+export function mapFirestoreDocument<T extends DocumentData>(
+  snapshot: QueryDocumentSnapshot<T>
+) {
   return { id: snapshot.id, ...snapshot.data() } as T & { id: string };
 }
 
@@ -136,25 +202,68 @@ export type FirestoreIncident = {
   version: number;
   createdAt?: unknown;
   updatedAt?: unknown;
-  events?: Array<{ label: string; actorUid: string; createdAt?: unknown; previousValue?: string | null; newValue?: string | null }>;
+  events?: Array<{
+    label: string;
+    actorUid: string;
+    createdAt?: unknown;
+    previousValue?: string | null;
+    newValue?: string | null;
+  }>;
 };
 
-export function subscribeToMyIncidents(uid: string, callback: (incidents: FirestoreIncident[]) => void) {
+export function subscribeToMyIncidents(
+  uid: string,
+  callback: (incidents: FirestoreIncident[]) => void
+) {
   const database = requireFirestore();
-  const incidentsQuery = query(collection(database, "incidents"), where("reporterUid", "==", uid), orderBy("createdAt", "desc"));
-  return onSnapshot(incidentsQuery, snapshot => callback(snapshot.docs.map(mapFirestoreDocument) as FirestoreIncident[]));
+  const incidentsQuery = query(
+    collection(database, "incidents"),
+    where("reporterUid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(incidentsQuery, snapshot =>
+    callback(snapshot.docs.map(mapFirestoreDocument) as FirestoreIncident[])
+  );
 }
 
-export function subscribeToAdminCollection<T extends DocumentData>(name: "incidents" | "users" | "organizations" | "auditLogs", callback: (rows: Array<T & { id: string }>) => void) {
+export function subscribeToAdminCollection<T extends DocumentData>(
+  name: "incidents" | "users" | "organizations" | "auditLogs",
+  callback: (rows: Array<T & { id: string }>) => void
+) {
   const database = requireFirestore();
-  const source = query(collection(database, name), orderBy("createdAt", "desc"));
-  return onSnapshot(source, snapshot => callback(snapshot.docs.map(mapFirestoreDocument) as Array<T & { id: string }>));
+  const source = query(
+    collection(database, name),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(source, snapshot =>
+    callback(
+      snapshot.docs.map(mapFirestoreDocument) as Array<T & { id: string }>
+    )
+  );
 }
 
-export async function createFirestoreIncident(input: Pick<FirestoreIncident, "reporterUid" | "category" | "description" | "locationLabel" | "latitude" | "longitude" | "reporterPhone" | "reporterEmail">) {
+export async function createFirestoreIncident(
+  input: Pick<
+    FirestoreIncident,
+    | "reporterUid"
+    | "category"
+    | "description"
+    | "locationLabel"
+    | "latitude"
+    | "longitude"
+    | "reporterPhone"
+    | "reporterEmail"
+  >
+) {
   const database = requireFirestore();
   const reference = `ECR-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-  const nowEvent = { label: "Report submitted", actorUid: input.reporterUid, previousValue: null, newValue: "submitted", createdAt: serverTimestamp() };
+  const nowEvent = {
+    label: "Report submitted",
+    actorUid: input.reporterUid,
+    previousValue: null,
+    newValue: "submitted",
+    createdAt: serverTimestamp(),
+  };
   const documentReference = await addDoc(collection(database, "incidents"), {
     ...input,
     publicReference: reference,
@@ -168,7 +277,14 @@ export async function createFirestoreIncident(input: Pick<FirestoreIncident, "re
   return { id: documentReference.id, publicReference: reference };
 }
 
-export async function updateFirestoreIncident(id: string, changes: Partial<Pick<FirestoreIncident, "status" | "priority" | "assignedOrganizationId">>, actorUid: string, expectedVersion: number) {
+export async function updateFirestoreIncident(
+  id: string,
+  changes: Partial<
+    Pick<FirestoreIncident, "status" | "priority" | "assignedOrganizationId">
+  >,
+  actorUid: string,
+  expectedVersion: number
+) {
   const database = requireFirestore();
   const incidentRef = doc(database, "incidents", id);
   await updateDoc(incidentRef, {
@@ -180,17 +296,45 @@ export async function updateFirestoreIncident(id: string, changes: Partial<Pick<
   });
 }
 
-export async function createFirestoreOrganization(input: Record<string, unknown>, actorUid: string) {
+export async function createFirestoreOrganization(
+  input: Record<string, unknown>,
+  actorUid: string
+) {
   const database = requireFirestore();
-  return addDoc(collection(database, "organizations"), { ...input, isActive: true, isVerified: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: actorUid });
+  return addDoc(collection(database, "organizations"), {
+    ...input,
+    isActive: true,
+    isVerified: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy: actorUid,
+  });
 }
 
-export async function updateFirestoreUserRole(uid: string, role: UserRole, actorUid: string) {
+export async function updateFirestoreUserRole(
+  uid: string,
+  role: UserRole,
+  actorUid: string
+) {
   const database = requireFirestore();
-  await updateDoc(doc(database, "users", uid), { role, updatedAt: serverTimestamp(), lastRoleChangeBy: actorUid });
+  await updateDoc(doc(database, "users", uid), {
+    role,
+    updatedAt: serverTimestamp(),
+    lastRoleChangeBy: actorUid,
+  });
 }
 
-export async function writeFirestoreAudit(input: { actorUid: string; action: string; resourceType: string; resourceId?: string; metadata?: Record<string, unknown> }) {
+export async function writeFirestoreAudit(input: {
+  actorUid: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string;
+  metadata?: Record<string, unknown>;
+}) {
   const database = requireFirestore();
-  await addDoc(collection(database, "auditLogs"), { ...input, metadata: input.metadata ?? {}, createdAt: serverTimestamp() });
+  await addDoc(collection(database, "auditLogs"), {
+    ...input,
+    metadata: input.metadata ?? {},
+    createdAt: serverTimestamp(),
+  });
 }

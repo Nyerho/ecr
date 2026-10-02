@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { observeFirebaseUser, observeUserProfile, signOutFirebaseUser, type FirebaseProfile, type UserRole } from "@/lib/firebase";
+import {
+  observeFirebaseUser,
+  observeUserProfile,
+  signOutFirebaseUser,
+  type FirebaseProfile,
+  type UserRole,
+} from "@/lib/firebase";
 
 export type AuthUser = FirebaseProfile & { id: string; role: UserRole };
-type UseAuthOptions = { redirectOnUnauthenticated?: boolean; redirectPath?: string };
+type UseAuthOptions = {
+  redirectOnUnauthenticated?: boolean;
+  redirectPath?: string;
+};
 
 function profileToUser(profile: FirebaseProfile): AuthUser {
   return { ...profile, id: profile.uid, name: profile.name || profile.email };
@@ -21,26 +30,57 @@ export function useAuth(options?: UseAuthOptions) {
       const stopAuth = observeFirebaseUser(firebaseUser => {
         stopProfile?.();
         if (!firebaseUser) {
-          if (active) { setUser(null); setLoading(false); }
+          if (active) {
+            setUser(null);
+            setLoading(false);
+          }
           return;
         }
         setLoading(true);
         stopProfile = observeUserProfile(firebaseUser.uid, profile => {
           if (!active) return;
-          setUser(profile ? profileToUser(profile) : { uid: firebaseUser.uid, id: firebaseUser.uid, name: firebaseUser.displayName || firebaseUser.email || "ECR user", email: firebaseUser.email || "", role: "citizen", photoURL: firebaseUser.photoURL });
+          setUser(
+            profile
+              ? profileToUser(profile)
+              : {
+                  uid: firebaseUser.uid,
+                  id: firebaseUser.uid,
+                  name:
+                    firebaseUser.displayName ||
+                    firebaseUser.email ||
+                    "ECR user",
+                  email: firebaseUser.email || "",
+                  role: "citizen",
+                  photoURL: firebaseUser.photoURL,
+                }
+          );
           setLoading(false);
         });
       });
-      return () => { active = false; stopProfile?.(); stopAuth(); };
+      return () => {
+        active = false;
+        stopProfile?.();
+        stopAuth();
+      };
     } catch (authError) {
-      setError(authError instanceof Error ? authError : new Error("Firebase authentication is unavailable."));
+      setError(
+        authError instanceof Error
+          ? authError
+          : new Error("Secure authentication is temporarily unavailable.")
+      );
       setLoading(false);
       return () => undefined;
     }
   }, []);
 
   useEffect(() => {
-    if (loading || user || !redirectOnUnauthenticated || typeof window === "undefined") return;
+    if (
+      loading ||
+      user ||
+      !redirectOnUnauthenticated ||
+      typeof window === "undefined"
+    )
+      return;
     window.location.href = redirectPath ?? "/sign-in";
   }, [loading, redirectOnUnauthenticated, redirectPath, user]);
 

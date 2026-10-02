@@ -35,13 +35,19 @@ export function getLocalSession(): LocalUser | null {
   }
 }
 
-export function registerLocalUser(input: { name: string; email: string; password: string }): LocalUser {
+export function registerLocalUser(input: {
+  name: string;
+  email: string;
+  password: string;
+}): LocalUser {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   if (name.length < 2) throw new Error("Enter your full name.");
-  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
-  if (password.length < 8) throw new Error("Use at least 8 characters for your password.");
+  if (!email || !email.includes("@"))
+    throw new Error("Enter a valid email address.");
+  if (password.length < 8)
+    throw new Error("Use at least 8 characters for your password.");
 
   const users = readUsers();
   if (users.some(user => user.email === email)) {
@@ -62,7 +68,10 @@ export function registerLocalUser(input: { name: string; email: string; password
   return session;
 }
 
-export function signInLocalUser(emailInput: string, password: string): LocalUser {
+export function signInLocalUser(
+  emailInput: string,
+  password: string
+): LocalUser {
   const email = emailInput.trim().toLowerCase();
   const user = readUsers().find(candidate => candidate.email === email);
   if (!user || user.password !== password) {
@@ -82,4 +91,5 @@ function toPublicUser(user: StoredUser): LocalUser {
   return publicUser;
 }
 
-export const LOCAL_AUTH_NOTICE = "Accounts and sessions are managed by Firebase Authentication.";
+export const LOCAL_AUTH_NOTICE =
+  "Accounts and sessions use secure authentication.";
