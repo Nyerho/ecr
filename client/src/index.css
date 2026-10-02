@@ -18,7 +18,10 @@
 
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--background); }
-body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); }
+body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--background); color: var(--foreground); }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+.mobile-safe-top { padding-top: max(0px, env(safe-area-inset-top)); }
+.mobile-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
