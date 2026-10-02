@@ -139,6 +139,7 @@ type IncidentCard = {
   status: string;
   priority: string;
   description: string;
+  reporterName?: string | null;
   locationLabel: string | null;
   reporterPhone: string | null;
   reporterEmail: string | null;
@@ -150,7 +151,11 @@ type IncidentCard = {
 };
 
 function toIncidentCard(incident: LocalIncident): IncidentCard {
-  return { ...incident, createdAt: new Date(incident.createdAt) };
+  return {
+    ...incident,
+    reporterName: null,
+    createdAt: new Date(incident.createdAt),
+  };
 }
 function toFirestoreIncidentCard(
   incident: FirestoreIncident & { id: string }
@@ -171,6 +176,7 @@ function toFirestoreIncidentCard(
     status: incident.status,
     priority: incident.priority,
     description: incident.description,
+    reporterName: incident.reporterName ?? null,
     locationLabel: incident.locationLabel ?? null,
     reporterPhone: incident.reporterPhone ?? null,
     reporterEmail: incident.reporterEmail ?? null,
@@ -223,6 +229,7 @@ type AgencyCard = {
 
 type ReportForm = {
   description: string;
+  reporterName: string;
   locationLabel: string;
   latitude: string;
   longitude: string;
@@ -261,6 +268,7 @@ const toneClasses: Record<string, string> = {
 function emptyForm(): ReportForm {
   return {
     description: "",
+    reporterName: "",
     locationLabel: "",
     latitude: "",
     longitude: "",
@@ -533,6 +541,7 @@ export default function Home() {
       const reporter = user ?? (await ensureAnonymousFirebaseUser());
       const result = await createFirestoreIncident({
         reporterUid: reporter.uid,
+        reporterName: form.reporterName.trim() || undefined,
         category: selectedCategory,
         description: form.description.trim(),
         locationLabel: form.locationLabel.trim() || undefined,
@@ -976,6 +985,15 @@ export default function Home() {
                           <p className="mt-2 max-w-xl text-sm text-slate-600">
                             {incident.description}
                           </p>
+                          {incident.events?.length ? (
+                            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                              <Activity size={13} />
+                              {
+                                incident.events[incident.events.length - 1]
+                                  .label
+                              }
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
@@ -1365,6 +1383,21 @@ export default function Home() {
                     authorized response teams.
                   </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="sm:col-span-2">
+                      <span className="sr-only">Your name</span>
+                      <input
+                        value={form.reporterName}
+                        onChange={event =>
+                          setForm(current => ({
+                            ...current,
+                            reporterName: event.target.value,
+                          }))
+                        }
+                        maxLength={120}
+                        placeholder="Your name (optional)"
+                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                    </label>
                     <label>
                       <span className="sr-only">Phone number</span>
                       <input
@@ -1515,6 +1548,8 @@ export default function Home() {
                       Contact
                     </span>
                     <p className="mt-1 text-sm text-slate-700">
+                      {form.reporterName || "Name not provided"}
+                      <br />
                       {form.reporterPhone || form.reporterEmail}
                     </p>
                   </div>

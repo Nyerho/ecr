@@ -11,6 +11,7 @@ import {
 } from "firebase/auth";
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   getFirestore,
@@ -212,6 +213,7 @@ export type FirestoreIncident = {
   id: string;
   publicReference: string;
   reporterUid: string;
+  reporterName?: string | null;
   category: string;
   status: string;
   priority: string;
@@ -284,6 +286,7 @@ export async function createFirestoreIncident(
   input: Pick<
     FirestoreIncident,
     | "reporterUid"
+    | "reporterName"
     | "category"
     | "description"
     | "locationLabel"
@@ -304,6 +307,7 @@ export async function createFirestoreIncident(
   };
   const optionalFields = Object.fromEntries(
     Object.entries({
+      reporterName: input.reporterName,
       locationLabel: input.locationLabel,
       latitude: input.latitude,
       longitude: input.longitude,
@@ -333,7 +337,8 @@ export async function updateFirestoreIncident(
     Pick<FirestoreIncident, "status" | "priority" | "assignedOrganizationId">
   >,
   actorUid: string,
-  expectedVersion: number
+  expectedVersion: number,
+  previousStatus: string
 ) {
   const database = requireFirestore();
   const incidentRef = doc(database, "incidents", id);
@@ -341,7 +346,15 @@ export async function updateFirestoreIncident(
     ...changes,
     version: expectedVersion + 1,
     updatedAt: serverTimestamp(),
-    events: [],
+    events: arrayUnion({
+      label: changes.status
+        ? `Status updated to ${changes.status.replaceAll("_", " ")}`
+        : "Incident updated",
+      actorUid,
+      previousValue: previousStatus,
+      newValue: changes.status ?? null,
+      createdAt: new Date().toISOString(),
+    }),
     lastAction: { actorUid, changes, createdAt: serverTimestamp() },
   });
 }

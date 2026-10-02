@@ -7,11 +7,14 @@ import {
   Clock3,
   ExternalLink,
   FileText,
+  Mail,
   LockKeyhole,
   MapPin,
   RefreshCw,
   ShieldCheck,
+  Phone,
   Users,
+  UserRound,
   X,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -20,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import {
   firebaseConfigured,
   subscribeToAdminCollection,
+  updateFirestoreIncident,
   updateFirestoreUserRole,
   createFirestoreOrganization,
   writeFirestoreAudit,
@@ -52,6 +56,18 @@ const roles: UserRole[] = [
   "responder",
   "moderator",
 ];
+const incidentStatusOptions = [
+  ["submitted", "Report submitted"],
+  ["received", "Seen by ECR"],
+  ["triaged", "Authorities contacted"],
+  ["assigned", "Response assigned"],
+  ["responding", "Help on the way"],
+  ["arrived", "Responder arrived"],
+  ["resolved", "Resolved"],
+  ["unable_to_verify", "Unable to verify"],
+  ["duplicate", "Duplicate report"],
+  ["cancelled", "Cancelled"],
+] as const;
 
 function dateLabel(value: unknown) {
   if (!value) return "—";
@@ -92,6 +108,8 @@ export default function Admin() {
   const [users, setUsers] = useState<FirebaseProfile[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [selectedIncident, setSelectedIncident] =
+    useState<FirestoreIncident | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [orgForm, setOrgForm] = useState({
     name: "",
@@ -190,6 +208,38 @@ export default function Admin() {
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not add organization."
+      );
+    }
+  }
+
+  async function updateIncidentStatus(
+    incident: FirestoreIncident,
+    status: string
+  ) {
+    if (!user || incident.status === status) return;
+    try {
+      await updateFirestoreIncident(
+        incident.id,
+        { status },
+        user.uid,
+        incident.version,
+        incident.status
+      );
+      await writeFirestoreAudit({
+        actorUid: user.uid,
+        action: "incident.status_updated",
+        resourceType: "incident",
+        resourceId: incident.id,
+        metadata: { previousStatus: incident.status, status },
+      });
+      toast.success(
+        `${incident.publicReference} is now ${status.replaceAll("_", " ")}`
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update the incident."
       );
     }
   }
@@ -303,7 +353,13 @@ export default function Admin() {
                   onSelect={setTab}
                 />
               )}
-              {tab === "incidents" && <IncidentTable incidents={incidents} />}
+              {tab === "incidents" && (
+                <IncidentTable
+                  incidents={incidents}
+                  onSelect={setSelectedIncident}
+                  onUpdateStatus={updateIncidentStatus}
+                />
+              )}
               {tab === "users" && (
                 <UserTable users={users} onChangeRole={changeRole} />
               )}
@@ -320,6 +376,13 @@ export default function Admin() {
           )}
         </section>
       </div>
+      {selectedIncident && (
+        <IncidentDetail
+          incident={selectedIncident}
+          onClose={() => setSelectedIncident(null)}
+          onUpdateStatus={updateIncidentStatus}
+        />
+      )}
     </main>
   );
 }
@@ -475,24 +538,32 @@ function Overview({
   );
 }
 
-function IncidentTable({ incidents }: { incidents: FirestoreIncident[] }) {
+function IncidentTable({
+  incidents,
+  onSelect,
+  onUpdateStatus,
+}: {
+  incidents: FirestoreIncident[];
+  onSelect: (incident: FirestoreIncident) => void;
+  onUpdateStatus: (incident: FirestoreIncident, status: string) => void;
+}) {
   return (
     <DataPanel
       eyebrow="Operational data"
       title="Incidents"
-      description="Live incident records. New reports and their locations appear here as soon as citizens submit them."
+      description="Live incident records. Review reporter biodata, contact details, and keep the status trail current for the person reporting."
     >
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-sm">
+        <table className="w-full min-w-[1200px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-[0.12em] text-muted-foreground">
               <th className="px-3 py-3">Reference</th>
               <th className="px-3 py-3">Category</th>
+              <th className="px-3 py-3">Reporter</th>
+              <th className="px-3 py-3">Contact</th>
               <th className="px-3 py-3">Location</th>
               <th className="px-3 py-3">Status</th>
-              <th className="px-3 py-3">Priority</th>
-              <th className="px-3 py-3">Version</th>
-              <th className="px-3 py-3">Created</th>
+              <th className="px-3 py-3">Details</th>
             </tr>
           </thead>
           <tbody>
@@ -501,13 +572,60 @@ function IncidentTable({ incidents }: { incidents: FirestoreIncident[] }) {
                 key={incident.id}
                 className="border-b border-border last:border-0"
               >
-                <td className="px-3 py-3 font-black">
-                  {incident.publicReference}
+                <td className="px-3 py-3 align-top font-black">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(incident)}
+                    className="text-left text-primary hover:underline"
+                  >
+                    {incident.publicReference}
+                  </button>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    {dateLabel(incident.createdAt)}
+                  </span>
                 </td>
-                <td className="px-3 py-3 capitalize">
+                <td className="px-3 py-3 align-top capitalize">
                   {incident.category.replaceAll("_", " ")}
                 </td>
-                <td className="max-w-[260px] px-3 py-3">
+                <td className="px-3 py-3 align-top">
+                  <div className="flex items-start gap-2">
+                    <UserRound size={15} className="mt-0.5 text-cyan-700" />
+                    <div>
+                      <p className="font-bold">
+                        {incident.reporterName || "Name not provided"}
+                      </p>
+                      <p className="mt-1 max-w-[180px] truncate text-xs text-muted-foreground">
+                        {incident.reporterUid}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  <div className="grid gap-1 text-xs">
+                    {incident.reporterPhone ? (
+                      <a
+                        href={`tel:${incident.reporterPhone}`}
+                        className="inline-flex items-center gap-1 font-bold text-primary hover:underline"
+                      >
+                        <Phone size={12} /> {incident.reporterPhone}
+                      </a>
+                    ) : null}
+                    {incident.reporterEmail ? (
+                      <a
+                        href={`mailto:${incident.reporterEmail}`}
+                        className="inline-flex items-center gap-1 font-bold text-primary hover:underline"
+                      >
+                        <Mail size={12} /> {incident.reporterEmail}
+                      </a>
+                    ) : null}
+                    {!incident.reporterPhone && !incident.reporterEmail && (
+                      <span className="text-muted-foreground">
+                        Not provided
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="max-w-[220px] px-3 py-3 align-top">
                   <div className="flex items-start gap-1.5">
                     <MapPin
                       size={15}
@@ -535,19 +653,34 @@ function IncidentTable({ incidents }: { incidents: FirestoreIncident[] }) {
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-black capitalize ${toneForStatus(incident.status)}`}
+                <td className="px-3 py-3 align-top">
+                  <select
+                    value={incident.status}
+                    onChange={event =>
+                      onUpdateStatus(incident, event.target.value)
+                    }
+                    className={`rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-black capitalize outline-none focus:ring-2 focus:ring-primary ${toneForStatus(incident.status)}`}
+                    aria-label={`Update status for ${incident.publicReference}`}
                   >
-                    {incident.status.replaceAll("_", " ")}
-                  </span>
+                    {incidentStatusOptions.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    v{incident.version} · {incident.priority}
+                  </p>
                 </td>
-                <td className="px-3 py-3 capitalize">{incident.priority}</td>
-                <td className="px-3 py-3 text-muted-foreground">
-                  {incident.version}
-                </td>
-                <td className="px-3 py-3 text-muted-foreground">
-                  {dateLabel(incident.createdAt)}
+                <td className="px-3 py-3 align-top">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSelect(incident)}
+                  >
+                    View report
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -556,6 +689,140 @@ function IncidentTable({ incidents }: { incidents: FirestoreIncident[] }) {
         {!incidents.length && <EmptyState text="No incidents found." />}
       </div>
     </DataPanel>
+  );
+}
+
+function IncidentDetail({
+  incident,
+  onClose,
+  onUpdateStatus,
+}: {
+  incident: FirestoreIncident;
+  onClose: () => void;
+  onUpdateStatus: (incident: FirestoreIncident, status: string) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-2xl sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">Incident details</p>
+            <h2 className="mt-1 text-2xl font-black">
+              {incident.publicReference}
+            </h2>
+            <p className="mt-1 text-sm capitalize text-muted-foreground">
+              {incident.category.replaceAll("_", " ")} ·{" "}
+              {dateLabel(incident.createdAt)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted"
+            aria-label="Close incident details"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-800">
+              Reporter biodata
+            </p>
+            <p className="mt-3 text-lg font-black">
+              {incident.reporterName || "Name not provided"}
+            </p>
+            <p className="mt-1 break-all text-xs text-cyan-950/70">
+              Reporter ID: {incident.reporterUid}
+            </p>
+            <div className="mt-4 grid gap-2 text-sm">
+              {incident.reporterPhone ? (
+                <a
+                  href={`tel:${incident.reporterPhone}`}
+                  className="inline-flex items-center gap-2 font-bold text-primary hover:underline"
+                >
+                  <Phone size={15} /> {incident.reporterPhone}
+                </a>
+              ) : null}
+              {incident.reporterEmail ? (
+                <a
+                  href={`mailto:${incident.reporterEmail}`}
+                  className="inline-flex items-center gap-2 font-bold text-primary hover:underline"
+                >
+                  <Mail size={15} /> {incident.reporterEmail}
+                </a>
+              ) : null}
+              {!incident.reporterPhone && !incident.reporterEmail && (
+                <span className="text-sm text-muted-foreground">
+                  No contact details provided.
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+              Update for reporter
+            </p>
+            <label className="mt-3 block text-sm font-bold">
+              Current status
+              <select
+                value={incident.status}
+                onChange={event => onUpdateStatus(incident, event.target.value)}
+                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary"
+              >
+                {incidentStatusOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              The reporter sees this status and the timeline update live in
+              their incident history.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+            Report
+          </p>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-foreground">
+            {incident.description}
+          </p>
+          <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold">
+            <MapPin size={15} className="text-emerald-600" />{" "}
+            {incidentLocation(incident)}
+          </p>
+        </div>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+            Live status timeline
+          </p>
+          <div className="mt-4 space-y-3">
+            {(incident.events ?? [])
+              .slice()
+              .reverse()
+              .map((event, index) => (
+                <div key={`${event.label}-${index}`} className="flex gap-3">
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-500" />
+                  <div>
+                    <p className="text-sm font-bold">{event.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {dateLabel(event.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            {!incident.events?.length && (
+              <p className="text-sm text-muted-foreground">
+                No timeline events yet.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 function UserTable({
