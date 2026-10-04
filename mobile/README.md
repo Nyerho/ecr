@@ -124,3 +124,21 @@ These operations require the updated `firestore.rules` in the repository to be d
 The mobile UI now uses an iOS-inspired glass treatment: translucent rounded surfaces, softer shadows, and a floating BlurView bottom tab bar with green active states. Chatter follows the local web Community room structure with a room header, message type and time metadata, alert/comment/update cards, empty state, composer, and safety guidance.
 
 Install dependencies after pulling this update with `npm install` so `expo-blur` is available.
+
+## Native iOS glass and Chatter parity
+
+The latest iOS treatment uses `expo-blur` for a clear, translucent Apple-style navigation surface. **Expo Go cannot render this native module**; use an EAS development build or a local iOS development build.
+
+Chatter now mirrors the website categories: **General**, **Need Help**, **Hazard**, **Supplies**, and **Check-in**, with official alerts, category filters, approximate area, urgency levels, open/resolved badges, and safe-post guidance.
+
+### Test the native glass build on macOS
+
+```bash
+npm install
+npx expo install expo-dev-client
+npx eas build:configure
+npx eas build --profile development --platform ios
+npx expo start --dev-client -c
+```
+
+Install the resulting development build in the simulator or on the iPhone, then open it from the dev-client server. A paid Apple Developer team is required for device builds; the iOS Simulator can use an EAS simulator build.
