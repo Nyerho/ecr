@@ -102,3 +102,25 @@ Useful variants:
 - The original APK stored report history locally as a fallback. This app keeps that behavior while also writing authenticated reports to Firestore.
 - Photos are currently attached in the native UX and stored in local report history; production photo sync should be connected to Firebase Storage if the backend requires the image bytes.
 - The identifier `com.ecr.response` matches the original APK package. If this conflicts with an existing Apple App ID or Play listing, change both identifiers before the first store build.
+
+## Chatter
+
+The mobile app includes a live Chatter room backed by the shared Firestore `chatMessages` collection. It shows public sanitized emergency alerts, community comments, and verified ECR updates, with filters for each message type. New reports are written atomically to `incidents`, `publicTracking`, and `chatMessages`, so a submitted report appears automatically as a sanitized alert. Signed-in or anonymous users can post short community comments; alerts include a link to track the public report.
+
+If Chatter is empty during testing, confirm that Firebase Firestore rules allow public reads of `chatMessages` where `visibility == "public"`, and that anonymous authentication is enabled if testing without signing in.
+
+## Account and moderation controls
+
+- **Personal information** opens from More and updates the Firebase display name.
+- **View submitted reports** opens the Reports tab.
+- Citizens can delete their own reports; the incident, public tracking record, and matching public Chatter alert are removed together.
+- Citizens can delete their own Chatter messages.
+- Admins can now toggle messages between **Hide message** and **Unhide message** in the web moderation room.
+
+These operations require the updated `firestore.rules` in the repository to be deployed to the Firebase project.
+
+## iOS visual update
+
+The mobile UI now uses an iOS-inspired glass treatment: translucent rounded surfaces, softer shadows, and a floating BlurView bottom tab bar with green active states. Chatter follows the local web Community room structure with a room header, message type and time metadata, alert/comment/update cards, empty state, composer, and safety guidance.
+
+Install dependencies after pulling this update with `npm install` so `expo-blur` is available.
