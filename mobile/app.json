@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "ECR Mobile",
+    "slug": "ecr-mobile-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/ecr-icon-square.png",
+    "userInterfaceStyle": "light",
+    "scheme": "ecr",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ecr.response",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ECR uses your location to help responders find the incident when you choose to share it.",
+        "NSCameraUsageDescription": "ECR lets you attach incident photos when you choose to provide them.",
+        "NSPhotoLibraryUsageDescription": "ECR lets you attach incident photos from your photo library."
+      }
+    },
+    "android": {
+      "package": "com.ecr.response",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#063f3d",
+        "foregroundImage": "./assets/ecr-icon-square.png"
+      }
+    },
+    "plugins": [
+      "expo-location",
+      "expo-image-picker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
