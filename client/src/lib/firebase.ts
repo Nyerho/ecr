@@ -339,6 +339,13 @@ export function hideCommunityMessage(id: string) {
   });
 }
 
+export function unhideCommunityMessage(id: string) {
+  return updateDoc(doc(requireFirestore(), "chatMessages", id), {
+    visibility: "public",
+    moderatedAt: serverTimestamp(),
+  });
+}
+
 export function trackPublicIncident(
   reference: string,
   callback: (incident: PublicIncidentTracking | null) => void,

@@ -29,13 +29,13 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid && request.resource.data.status == 'submitted';
       allow read: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
       allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
     }
     match /publicTracking/{reference} {
       allow create: if (isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid)) && request.resource.data.public == true;
       allow read: if resource.data.public == true;
       allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
     match /chatMessages/{messageId} {
@@ -46,7 +46,8 @@ service cloud.firestore {
         && request.resource.data.kind in ['alert', 'comment', 'admin_update']
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 800;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.authorUid == request.auth.uid);
     }
 
     match /deviceTokens/{tokenId} {
