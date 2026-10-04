@@ -118,3 +118,9 @@ If Chatter is empty during testing, confirm that Firebase Firestore rules allow 
 - Admins can now toggle messages between **Hide message** and **Unhide message** in the web moderation room.
 
 These operations require the updated `firestore.rules` in the repository to be deployed to the Firebase project.
+
+## iOS visual update
+
+The mobile UI now uses an iOS-inspired glass treatment: translucent rounded surfaces, softer shadows, and a floating BlurView bottom tab bar with green active states. Chatter follows the local web Community room structure with a room header, message type and time metadata, alert/comment/update cards, empty state, composer, and safety guidance.
+
+Install dependencies after pulling this update with `npm install` so `expo-blur` is available.
