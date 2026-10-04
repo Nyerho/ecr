@@ -32,11 +32,6 @@
     "plugins": [
       "expo-location",
       "expo-image-picker"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
-      }
-    }
+    ]
   }
 }
