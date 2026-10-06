@@ -7,8 +7,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import CitizenDashboard from "./pages/CitizenDashboard";
 import Auth from "./pages/Auth";
-import Dispatch from "./pages/Dispatch";
-import Chatter from "./pages/Chatter";
+import Admin from "./pages/Admin";
+import CookieConsent from "./components/CookieConsent";
 
 function Router() {
   return (
@@ -16,9 +16,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/sign-in"><Auth mode="sign-in" /></Route>
       <Route path="/register"><Auth mode="register" /></Route>
-      <Route path="/dispatch" component={Dispatch} />
+      <Route path="/dispatch" component={Admin} />
+      <Route path="/admin" component={Admin} />
       <Route path="/app" component={CitizenDashboard} />
-      <Route path="/chatter" component={Chatter} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -32,6 +32,7 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

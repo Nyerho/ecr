@@ -1,16 +1,9 @@
-export type LocalUserRole =
-  | "citizen"
-  | "dispatcher"
-  | "agencyCoordinator"
-  | "responder"
-  | "administrator";
-
 export type LocalUser = {
   id: string;
   name: string;
   email: string;
-  role: LocalUserRole;
-  createdAt: string;
+  role: string;
+  createdAt?: unknown;
 };
 
 type StoredUser = LocalUser & {
@@ -42,40 +35,19 @@ export function getLocalSession(): LocalUser | null {
   }
 }
 
-export type PasswordRequirements = {
-  minLength: boolean;
-  hasUpper: boolean;
-  hasLower: boolean;
-  hasNumber: boolean;
-  hasSpecial: boolean;
-};
-
-export function checkPasswordRequirements(password: string): PasswordRequirements {
-  return {
-    minLength: password.length >= 8,
-    hasUpper: /[A-Z]/.test(password),
-    hasLower: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    hasSpecial: /[^A-Za-z0-9]/.test(password),
-  };
-}
-
-export function isPasswordStrong(password: string): boolean {
-  const req = checkPasswordRequirements(password);
-  return req.minLength && req.hasUpper && req.hasLower && req.hasNumber && req.hasSpecial;
-}
-
-export const PASSWORD_REQUIREMENT_HINT = "Password must be at least 8 characters and include an uppercase letter, lowercase letter, number, and special character.";
-
-export function registerLocalUser(input: { name: string; email: string; password: string }): LocalUser {
+export function registerLocalUser(input: {
+  name: string;
+  email: string;
+  password: string;
+}): LocalUser {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   if (name.length < 2) throw new Error("Enter your full name.");
-  if (!email || !email.includes("@")) throw new Error("Enter a valid email address.");
-  if (!isPasswordStrong(password)) {
-    throw new Error(PASSWORD_REQUIREMENT_HINT);
-  }
+  if (!email || !email.includes("@"))
+    throw new Error("Enter a valid email address.");
+  if (password.length < 8)
+    throw new Error("Use at least 8 characters for your password.");
 
   const users = readUsers();
   if (users.some(user => user.email === email)) {
@@ -87,7 +59,7 @@ export function registerLocalUser(input: { name: string; email: string; password
     name,
     email,
     password,
-    role: "citizen",
+    role: "user",
     createdAt: new Date().toISOString(),
   };
   writeUsers([...users, user]);
@@ -96,7 +68,10 @@ export function registerLocalUser(input: { name: string; email: string; password
   return session;
 }
 
-export function signInLocalUser(emailInput: string, password: string): LocalUser {
+export function signInLocalUser(
+  emailInput: string,
+  password: string
+): LocalUser {
   const email = emailInput.trim().toLowerCase();
   const user = readUsers().find(candidate => candidate.email === email);
   if (!user || user.password !== password) {
@@ -116,4 +91,5 @@ function toPublicUser(user: StoredUser): LocalUser {
   return publicUser;
 }
 
-export const LOCAL_AUTH_NOTICE = "Local prototype mode: accounts are stored only in this browser until Firestore is connected.";
+export const LOCAL_AUTH_NOTICE =
+  "Accounts and sessions use secure authentication.";

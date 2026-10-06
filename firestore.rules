@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow create: if isOwner(uid) && request.resource.data.role == 'citizen';
+      allow read: if isOwner(uid) || isAdmin();
+      allow update: if isAdmin() || (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'jurisdictionId']));
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /incidents/{incidentId} {
+      allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid && request.resource.data.status == 'submitted';
+      allow read: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /publicTracking/{reference} {
+      allow create: if (isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid)) && request.resource.data.public == true;
+      allow read: if resource.data.public == true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /chatMessages/{messageId} {
+      allow read: if isAdmin() || resource.data.visibility == 'public';
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.visibility == 'public'
+        && request.resource.data.kind in ['alert', 'comment', 'admin_update']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 800;
+      allow update, delete: if isAdmin();
+    }
+
+    match /deviceTokens/{tokenId} {
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.platform == 'android'
+        && request.resource.data.token is string;
+      allow read, delete: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /organizations/{organizationId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /auditLogs/{auditId} {
+      allow create: if isAdmin() && request.resource.data.actorUid == request.auth.uid;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

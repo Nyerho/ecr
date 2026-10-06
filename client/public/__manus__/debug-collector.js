@@ -756,49 +756,6 @@
   // Periodic reporting
   setInterval(reportLogs, CONFIG.reportInterval);
 
-  // Report on page unload
-  window.addEventListener("beforeunload", function () {
-    var consoleLogs = store.consoleLogs;
-    var networkRequests = store.networkRequests;
-    var uiEvents = store.uiEvents;
-
-    if (
-      consoleLogs.length === 0 &&
-      networkRequests.length === 0 &&
-      uiEvents.length === 0
-    ) {
-      return;
-    }
-
-    var payload = {
-      timestamp: Date.now(),
-      consoleLogs: consoleLogs,
-      networkRequests: networkRequests,
-      // Mirror uiEvents to sessionEvents for sessionReplay.log
-      sessionEvents: uiEvents,
-      uiEvents: uiEvents,
-    };
-
-    if (navigator.sendBeacon) {
-      var payloadStr = JSON.stringify(payload);
-      // sendBeacon has ~64KB limit, truncate if too large
-      var MAX_BEACON_SIZE = 60000; // Leave some margin
-      if (payloadStr.length > MAX_BEACON_SIZE) {
-        // Prioritize: keep recent events, drop older logs
-        var truncatedPayload = {
-          timestamp: Date.now(),
-          consoleLogs: consoleLogs.slice(-50),
-          networkRequests: networkRequests.slice(-20),
-          sessionEvents: uiEvents.slice(-100),
-          uiEvents: uiEvents.slice(-100),
-          _truncated: true,
-        };
-        payloadStr = JSON.stringify(truncatedPayload);
-      }
-      navigator.sendBeacon(CONFIG.reportEndpoint, payloadStr);
-    }
-  });
-
   // ==========================================================================
   // Initialization
   // ==========================================================================

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Emergency Community Response</string>
+    <string name="title_activity_main">Emergency Community Response</string>
+    <string name="package_name">com.ecr.response</string>
+    <string name="custom_url_scheme">com.ecr.response</string>
+</resources>

@@ -1,65 +1,851 @@
-import { ArrowRight, CheckCircle2, Clock3, Globe2, HeartPulse, LockKeyhole, MapPin, Menu, Radio, ShieldCheck, Siren, UsersRound, X } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Globe2,
+  HeartPulse,
+  LockKeyhole,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Phone,
+  Radio,
+  Search,
+  ShieldCheck,
+  Siren,
+  UsersRound,
+  X,
+} from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { startLogin } from "@/const";
+import BrandLogo from "@/components/BrandLogo";
+import EmergencyContactsModal from "@/components/EmergencyContactsModal";
+import CommunityChat from "@/components/CommunityChat";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
+import FloatingTikTok from "@/components/FloatingTikTok";
+import {
+  trackPublicIncident,
+  type PublicIncidentTracking,
+} from "@/lib/firebase";
 
 const pillars = [
-  { icon: Siren, title: "One clear report", text: "Structured incident details help response teams understand what is happening faster." },
-  { icon: MapPin, title: "Location with consent", text: "Share a landmark or device location so authorized responders know where to go." },
-  { icon: Radio, title: "A connected response", text: "Keep the report, the status trail, and the response team in one secure thread." },
+  {
+    icon: Siren,
+    title: "One clear report",
+    text: "Structured incident details help response teams understand what is happening faster.",
+  },
+  {
+    icon: MapPin,
+    title: "Location with consent",
+    text: "Share a landmark or device location so authorized responders know where to go.",
+  },
+  {
+    icon: Radio,
+    title: "A connected response",
+    text: "Keep the report, the status trail, and the response team in one secure thread.",
+  },
 ];
 
 const BEACON_IMAGE = "/ecr-response-beacon.png";
+const HERO_MESSAGES = [
+  "Help When It Matters Most",
+  "Get Help. Get Safe.",
+  "Emergency Help, One Step Away",
+] as const;
 
 const steps = [
   ["01", "Report", "Choose the emergency type and tell ECR what is happening."],
-  ["02", "Locate", "Confirm a landmark or share your device location when safe."],
-  ["03", "Coordinate", "Authorized teams triage the report and route it to the right agency."],
-  ["04", "Stay informed", "Track the response status without repeatedly calling for updates."],
+  [
+    "02",
+    "Locate",
+    "Confirm a landmark or share your device location when safe.",
+  ],
+  [
+    "03",
+    "Coordinate",
+    "Authorized teams triage the report and route it to the right agency.",
+  ],
+  [
+    "04",
+    "Stay informed",
+    "Track the response status without repeatedly calling for updates.",
+  ],
 ];
+
+function trackingDate(value: unknown) {
+  if (!value) return "—";
+  const date =
+    typeof value === "object" && value !== null && "toDate" in value
+      ? (value as { toDate: () => Date }).toDate()
+      : new Date(value as string | number);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+function PublicReportTracker() {
+  const initialReference =
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search)
+          .get("report")
+          ?.toUpperCase() ?? "");
+  const [input, setInput] = useState(initialReference);
+  const [reference, setReference] = useState(initialReference);
+  const [incident, setIncident] = useState<PublicIncidentTracking | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!reference) return;
+    setIncident(null);
+    setError("");
+    setLoading(true);
+    return trackPublicIncident(
+      reference,
+      tracked => {
+        setIncident(tracked);
+        setLoading(false);
+        if (!tracked)
+          setError("No public tracking record was found for that report ID.");
+      },
+      () => {
+        setLoading(false);
+        setError("This report cannot be tracked right now. Please try again.");
+      }
+    );
+  }, [reference]);
+
+  function track(event: FormEvent) {
+    event.preventDefault();
+    const normalized = input.trim().toUpperCase();
+    if (!/^ECR-\d{4}-[A-Z0-9]+$/.test(normalized)) {
+      setError(
+        "Enter the report ID exactly as shown, for example ECR-2026-E823DD."
+      );
+      setIncident(null);
+      return;
+    }
+    setReference(normalized);
+  }
+
+  async function copyReference() {
+    if (!reference) return;
+    await navigator.clipboard?.writeText(reference);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <section
+      id="track-report"
+      className="border-y border-emerald-100 bg-emerald-50/60"
+    >
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+            Track without an account
+          </p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+            Follow your report from one reference ID.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
+            Copy the report ID from your receipt, paste it here, and see the
+            live operational timeline. Reporter contact details are never shown
+            in this public view.
+          </p>
+          <form
+            onSubmit={track}
+            className="mt-6 flex flex-col gap-2 sm:flex-row"
+          >
+            <label className="sr-only" htmlFor="public-report-reference">
+              Report ID
+            </label>
+            <input
+              id="public-report-reference"
+              value={input}
+              onChange={event => setInput(event.target.value)}
+              placeholder="ECR-2026-E823DD"
+              className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:bg-[#075b55]"
+            >
+              <Search size={16} /> Track report
+            </button>
+          </form>
+          {error && (
+            <p className="mt-3 text-sm font-bold text-rose-700">{error}</p>
+          )}
+        </div>
+        <div className="rounded-3xl border border-white bg-white/80 p-5 shadow-sm sm:p-6">
+          {!reference && (
+            <div className="grid min-h-48 place-items-center text-center text-sm text-slate-500">
+              <div>
+                <Clock3 className="mx-auto text-emerald-600" size={25} />
+                <p className="mt-3 font-bold">
+                  Your status timeline will appear here.
+                </p>
+              </div>
+            </div>
+          )}
+          {reference && loading && (
+            <div className="grid min-h-48 place-items-center text-sm font-bold text-slate-500">
+              Loading live report status…
+            </div>
+          )}
+          {reference && incident && !loading && (
+            <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                    {incident.publicReference}
+                  </p>
+                  <h3 className="mt-1 text-xl font-black capitalize text-slate-950">
+                    {incident.category.replaceAll("_", " ")}
+                  </h3>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black capitalize text-emerald-700">
+                  {incident.status.replaceAll("_", " ")}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
+                <span>Last updated {trackingDate(incident.updatedAt)}</span>
+                <button
+                  type="button"
+                  onClick={copyReference}
+                  className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900"
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Copied" : "Copy ID"}
+                </button>
+              </div>
+              <div className="mt-5 space-y-4">
+                {(incident.events ?? [])
+                  .slice()
+                  .reverse()
+                  .map((event, index) => (
+                    <div key={`${event.label}-${index}`} className="flex gap-3">
+                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-500" />
+                      <div>
+                        <p className="text-sm font-black text-slate-800">
+                          {event.label}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {trackingDate(event.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [heroMessageIndex, setHeroMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!privacyOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPrivacyOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.body.style.overflow = "";
+    };
+  }, [privacyOpen]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHeroMessageIndex(index => (index + 1) % HERO_MESSAGES.length);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/80 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <a href="/" className="flex items-center gap-3" aria-label="ECR home">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#063f3d] text-white shadow-lg shadow-emerald-950/10"><ShieldCheck size={21} /></span>
-            <span><span className="block text-[15px] font-black tracking-[0.18em] text-[#063f3d]">ECR</span><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Emergency Community Response</span></span>
-          </a>
-          <nav className="hidden items-center gap-7 text-sm font-bold text-slate-500 md:flex" aria-label="Main navigation">
-            <a href="#how-it-works" className="transition hover:text-emerald-700">How it works</a>
-            <a href="#network" className="transition hover:text-emerald-700">Response network</a>
-            <a href="#trust" className="transition hover:text-emerald-700">Safety & privacy</a>
+          <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
+          <nav
+            className="hidden items-center gap-7 text-sm font-bold text-slate-500 md:flex"
+            aria-label="Main navigation"
+          >
+            <a
+              href="#how-it-works"
+              className="transition hover:text-emerald-700"
+            >
+              How it works
+            </a>
+            <a href="#network" className="transition hover:text-emerald-700">
+              Response network
+            </a>
+            <button
+              type="button"
+              onClick={() => setPrivacyOpen(true)}
+              className="transition hover:text-emerald-700"
+            >
+              Safety & privacy
+            </button>
           </nav>
-          <div className="hidden items-center gap-2 md:flex"><a href="/app" className="rounded-full px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-100">Open app</a><button onClick={() => startLogin()} className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-950/10 hover:-translate-y-0.5 hover:bg-[#075b55]">Sign in</button></div>
-          <button className="rounded-xl p-2 text-slate-600 md:hidden" onClick={() => setMenuOpen(value => !value)} aria-label={menuOpen ? "Close menu" : "Open menu"}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
+          <div className="hidden items-center gap-2 md:flex">
+            <button
+              type="button"
+              onClick={() => setContactsOpen(true)}
+              className="rounded-full bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/20 hover:-translate-y-0.5 hover:bg-rose-800"
+            >
+              SOS
+            </button>
+            <a
+              href="/app"
+              className="rounded-full px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
+            >
+              Open app
+            </a>
+            <button
+              onClick={() => startLogin()}
+              className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-950/10 hover:-translate-y-0.5 hover:bg-[#075b55]"
+            >
+              Sign in
+            </button>
+          </div>
+          <button
+            className="rounded-xl p-2 text-slate-600 md:hidden"
+            onClick={() => setMenuOpen(value => !value)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
-        {menuOpen && <div className="border-t border-slate-100 bg-white px-4 py-4 md:hidden"><div className="grid gap-2 text-sm font-bold text-slate-600"><a href="#how-it-works" onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-2 hover:bg-slate-50">How it works</a><a href="#network" onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-2 hover:bg-slate-50">Response network</a><a href="#trust" onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-2 hover:bg-slate-50">Safety & privacy</a><a href="/app" className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-800">Open reporting app</a></div></div>}
+        {menuOpen && (
+          <div className="border-t border-slate-100 bg-white px-4 py-4 md:hidden">
+            <div className="grid gap-2 text-sm font-bold text-slate-600">
+              <button
+                type="button"
+                onClick={() => {
+                  setContactsOpen(true);
+                  setMenuOpen(false);
+                }}
+                className="rounded-xl bg-rose-700 px-3 py-2 text-left font-black text-white"
+              >
+                SOS · Call local services
+              </button>
+              <a
+                href="#how-it-works"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-3 py-2 hover:bg-slate-50"
+              >
+                How it works
+              </a>
+              <a
+                href="#network"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-xl px-3 py-2 hover:bg-slate-50"
+              >
+                Response network
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setPrivacyOpen(true);
+                  setMenuOpen(false);
+                }}
+                className="rounded-xl px-3 py-2 text-left hover:bg-slate-50"
+              >
+                Safety & privacy
+              </button>
+              <a
+                href="/app"
+                className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-800"
+              >
+                Open reporting app
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       <main>
         <section className="hero-surface relative overflow-hidden bg-[#063f3d]">
           <div className="hero-grid absolute inset-0 opacity-40" />
-          <div className="absolute -right-24 -top-32 h-112 w-md rounded-full bg-emerald-300/15 blur-3xl" />
+          <div className="absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-24">
-            <div className="reveal-up"><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" /> Built for safer communities</div><h1 className="max-w-3xl text-5xl font-black leading-[0.98] tracking-tighter text-white sm:text-7xl">A clearer path from <span className="text-emerald-300">emergency</span> to help.</h1><p className="mt-6 max-w-xl text-base leading-7 text-emerald-50/75 sm:text-lg">ECR connects people who need help with authorized response teams, local agencies, and community responders through one trusted response loop.</p><div className="mt-9 mx-auto flex w-[70%] flex-col gap-3 sm:mx-0 sm:w-auto sm:flex-row"><a href="/app" className="inline-flex h-13 items-center justify-center gap-2 rounded-2xl bg-[#13b981] px-6 text-sm font-black text-[#022c2b] shadow-xl shadow-emerald-950/20 hover:-translate-y-1 hover:bg-[#34d399]">Open reporting app <ArrowRight size={17} /></a><a href="tel:112" className="inline-flex h-13 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-6 text-sm font-black text-white hover:-translate-y-1 hover:bg-white/15"><Radio size={17} /> Call 112</a></div><div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-emerald-100/65"><span className="inline-flex items-center gap-2"><LockKeyhole size={14} /> Private by design</span><span className="inline-flex items-center gap-2"><Globe2 size={14} /> Built for Nigeria</span><span className="inline-flex items-center gap-2"><CheckCircle2 size={14} /> Human-led response</span></div></div>
-            <div className="relative min-h-105"><div className="beacon-halo absolute right-4 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-emerald-200/20" /><div className="glass-card relative z-10 rounded-4xl border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl"><div className="rounded-3xl bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">The ECR promise</p><h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Fast enough for the moment. Thoughtful enough for the person.</h2></div><span className="icon-orb grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><HeartPulse size={22} /></span></div><div className="mt-8 grid gap-4">{pillars.map(({ icon: Icon, title, text }) => <div key={title} className="flex gap-4 rounded-2xl border border-emerald-100 bg-white/75 p-4"><span className="icon-orb grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon size={18} /></span><div><p className="text-sm font-black text-slate-900">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{text}</p></div></div>)}</div></div></div><img src={BEACON_IMAGE} alt="3D glass response beacon" className="hero-beacon pointer-events-none absolute -right-10 bottom-0 z-20 h-52 w-52 object-contain drop-shadow-[0_30px_30px_rgba(0,0,0,0.28)] sm:-right-14 sm:h-64 sm:w-64" /><div className="glass-particle absolute -right-3 top-10 h-3 w-3 rounded-full bg-cyan-200/80" /><div className="glass-particle absolute -left-2 bottom-16 h-2 w-2 rounded-full bg-emerald-200/80 [animation-delay:900ms]" /></div>
+            <div className="reveal-up">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />{" "}
+                Built for safer communities
+              </div>
+              <h1
+                aria-live="polite"
+                className="max-w-3xl text-5xl font-black leading-[0.98] tracking-[-0.05em] text-white transition-opacity duration-500 sm:text-7xl"
+                key={HERO_MESSAGES[heroMessageIndex]}
+              >
+                {HERO_MESSAGES[heroMessageIndex]}
+              </h1>
+              <div
+                className="mt-4 flex gap-1.5"
+                aria-label={`Hero message ${heroMessageIndex + 1} of ${HERO_MESSAGES.length}`}
+              >
+                {HERO_MESSAGES.map((message, index) => (
+                  <span
+                    key={message}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${index === heroMessageIndex ? "w-8 bg-emerald-300" : "w-2 bg-white/30"}`}
+                  />
+                ))}
+              </div>
+              <p className="mt-6 max-w-xl text-base leading-7 text-emerald-50/75 sm:text-lg">
+                ECR connects people who need help with local authorities,
+                verified responders, and community members through one trusted
+                response loop.
+              </p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="/app"
+                  className="inline-flex h-13 items-center justify-center gap-2 rounded-2xl bg-[#13b981] px-6 text-sm font-black text-[#022c2b] shadow-xl shadow-emerald-950/20 hover:-translate-y-1 hover:bg-[#34d399]"
+                >
+                  Open reporting app <ArrowRight size={17} />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setContactsOpen(true)}
+                  className="inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
+                    SOS
+                  </span>
+                  <span className="text-left">
+                    <span className="block">Emergency call</span>
+                    <span className="block text-[11px] font-semibold text-rose-100">
+                      Choose an official service
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-emerald-100/65">
+                <span className="inline-flex items-center gap-2">
+                  <LockKeyhole size={14} /> Private by design
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <Globe2 size={14} /> Built for Nigeria
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <CheckCircle2 size={14} /> Human-led response
+                </span>
+              </div>
+            </div>
+            <div className="relative min-h-[420px]">
+              <div className="beacon-halo absolute right-4 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-emerald-200/20" />
+              <div className="glass-card relative z-10 rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
+                <div className="rounded-[1.5rem] bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                        The ECR promise
+                      </p>
+                      <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">
+                        Fast enough for the moment. Thoughtful enough for the
+                        person.
+                      </h2>
+                    </div>
+                    <span className="icon-orb grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+                      <HeartPulse size={22} />
+                    </span>
+                  </div>
+                  <div className="mt-8 grid gap-4">
+                    {pillars.map(({ icon: Icon, title, text }) => (
+                      <div
+                        key={title}
+                        className="flex gap-4 rounded-2xl border border-emerald-100 bg-white/75 p-4"
+                      >
+                        <span className="icon-orb grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                          <Icon size={18} />
+                        </span>
+                        <div>
+                          <p className="text-sm font-black text-slate-900">
+                            {title}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {text}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <img
+                src={BEACON_IMAGE}
+                alt="3D ECR emergency response emblem"
+                className="hero-beacon pointer-events-none absolute -right-10 bottom-0 z-20 h-52 w-52 rounded-3xl object-contain drop-shadow-[0_30px_30px_rgba(0,0,0,0.28)] sm:-right-14 sm:h-64 sm:w-64"
+              />
+              <div className="glass-particle absolute -right-3 top-10 h-3 w-3 rounded-full bg-cyan-200/80" />
+              <div className="glass-particle absolute -left-2 bottom-16 h-2 w-2 rounded-full bg-emerald-200/80 [animation-delay:900ms]" />
+            </div>
           </div>
         </section>
 
-        <section className="border-b border-slate-200/80 bg-white"><div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8"><div><p className="text-3xl font-black text-[#063f3d]">24/7</p><p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Response-ready mindset</p></div><div><p className="text-3xl font-black text-[#063f3d]">1 clear</p><p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Report-to-resolution thread</p></div><div><p className="text-3xl font-black text-[#063f3d]">Local first</p><p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Communities and agencies together</p></div></div></section>
+        <section className="border-b border-slate-200/80 bg-white">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8">
+            <div>
+              <p className="text-3xl font-black text-[#063f3d]">24/7</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                Response-ready mindset
+              </p>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-[#063f3d]">1 clear</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                Report-to-resolution thread
+              </p>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-[#063f3d]">Local first</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                Communities and agencies together
+              </p>
+            </div>
+          </div>
+        </section>
+        <PublicReportTracker />
+        <CommunityChat />
 
-        <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"><div className="max-w-2xl"><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">A simple response loop</p><h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Clarity when the situation is anything but clear.</h2><p className="mt-4 text-base leading-7 text-slate-500">ECR turns the first call for help into structured information that the right people can act on.</p></div><div className="mt-10 grid gap-4 md:grid-cols-4">{steps.map(([number, title, text], index) => <div key={number} className="glass-tile rounded-3xl border border-slate-200/80 bg-white/80 p-5"><span className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${index === 0 ? "bg-[#063f3d] text-white" : "bg-emerald-50 text-emerald-800"}`}>{number}</span><h3 className="mt-6 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{text}</p></div>)}</div></section>
+        <section
+          id="how-it-works"
+          className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+        >
+          <div className="max-w-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+              A simple response loop
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+              Clarity when the situation is anything but clear.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-500">
+              ECR turns the first call for help into structured information that
+              the right people can act on.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-4">
+            {steps.map(([number, title, text], index) => (
+              <div
+                key={number}
+                className="glass-tile rounded-3xl border border-slate-200/80 bg-white/80 p-5"
+              >
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${index === 0 ? "bg-[#063f3d] text-white" : "bg-emerald-50 text-emerald-800"}`}
+                >
+                  {number}
+                </span>
+                <h3 className="mt-6 text-lg font-black">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <section id="network" className="bg-[#eaf6f1]"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-24"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">A coordinated network</p><h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">The right response should not depend on who you already know.</h2><p className="mt-5 text-base leading-7 text-slate-600">ECR is designed to route structured reports toward verified agencies, dispatch teams, and trained community responders while keeping access scoped and accountable.</p><a href="/app" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]">Explore the reporting flow <ArrowRight size={16} /></a></div><div className="grid gap-4 sm:grid-cols-2"><div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm"><UsersRound className="text-emerald-700" size={24} /><h3 className="mt-6 text-lg font-black">For communities</h3><p className="mt-2 text-sm leading-6 text-slate-500">Report safely, share only what is necessary, and stay informed as the status changes.</p></div><div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm"><ShieldCheck className="text-emerald-700" size={24} /><h3 className="mt-6 text-lg font-black">For agencies</h3><p className="mt-2 text-sm leading-6 text-slate-500">Receive structured incident data, contact details, location context, and a traceable audit trail.</p></div><div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm"><Clock3 className="text-emerald-700" size={24} /><h3 className="mt-6 text-lg font-black">For responders</h3><p className="mt-2 text-sm leading-6 text-slate-500">See the next action, accept ownership, and keep the person reporting close to the loop.</p></div><div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm"><LockKeyhole className="text-emerald-700" size={24} /><h3 className="mt-6 text-lg font-black">For trust</h3><p className="mt-2 text-sm leading-6 text-slate-500">Role-based access, secure sessions, validation, audit events, and privacy-aware data handling.</p></div></div></div></section>
+        <section id="network" className="bg-[#eaf6f1]">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-24">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                A coordinated network
+              </p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                The right response should not depend on who you already know.
+              </h2>
+              <p className="mt-5 text-base leading-7 text-slate-600">
+                ECR is designed to route structured reports toward verified
+                agencies, dispatch teams, and trained community responders while
+                keeping access scoped and accountable.
+              </p>
+              <a
+                href="/app"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]"
+              >
+                Explore the reporting flow <ArrowRight size={16} />
+              </a>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+                <UsersRound className="text-emerald-700" size={24} />
+                <h3 className="mt-6 text-lg font-black">For communities</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Report safely, share only what is necessary, and stay informed
+                  as the status changes.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+                <ShieldCheck className="text-emerald-700" size={24} />
+                <h3 className="mt-6 text-lg font-black">For agencies</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Receive structured incident data, contact details, location
+                  context, and a traceable audit trail.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+                <Clock3 className="text-emerald-700" size={24} />
+                <h3 className="mt-6 text-lg font-black">For responders</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  See the next action, accept ownership, and keep the person
+                  reporting close to the loop.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+                <LockKeyhole className="text-emerald-700" size={24} />
+                <h3 className="mt-6 text-lg font-black">For trust</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Role-based access, secure sessions, validation, audit events,
+                  and privacy-aware data handling.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <section id="trust" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"><div className="rounded-4xl bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10"><LockKeyhole className="mx-auto text-emerald-300" size={28} /><h2 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">Safety is part of the product, not a footer note.</h2><p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-emerald-50/70">Share what is safe and necessary. For immediate danger, call official emergency services first. ECR helps create a clearer coordination trail around that response.</p><a href="/app" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]">Start a report <ArrowRight size={16} /></a></div></section>
+        <section
+          id="trust"
+          className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+        >
+          <div className="rounded-[2rem] bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10">
+            <LockKeyhole className="mx-auto text-emerald-300" size={28} />
+            <h2 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">
+              Safety is part of the product, not a footer note.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-emerald-50/70">
+              Share what is safe and necessary. For immediate danger, contact
+              the appropriate authority first. ECR helps create a clearer
+              coordination trail around that response.
+            </p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <a
+                href="/app"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]"
+              >
+                Start a report <ArrowRight size={16} />
+              </a>
+              <a
+                href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-white/15"
+              >
+                <MessageCircle size={16} /> Join WhatsApp updates
+              </a>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8"><div><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#063f3d] text-white"><ShieldCheck size={18} /></span><span className="text-sm font-black tracking-[0.16em] text-[#063f3d]">ECR</span></div><p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">Emergency Community Response — safer communities through clearer coordination.</p></div><div><p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">Explore</p><div className="mt-4 grid gap-3 text-sm font-bold text-slate-600"><a href="#how-it-works" className="hover:text-emerald-700">How it works</a><a href="#network" className="hover:text-emerald-700">Response network</a><a href="/app" className="hover:text-emerald-700">Open reporting app</a></div></div><div><p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">Important</p><div className="mt-4 grid gap-3 text-sm font-bold text-slate-600"><a href="tel:112" className="hover:text-emerald-700">Call 112</a><a href="#trust" className="hover:text-emerald-700">Safety & privacy</a><span className="inline-flex items-center gap-2 text-xs text-slate-400"><LockKeyhole size={13} /> Authorized access only</span></div></div></div><div className="border-t border-slate-100"><div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"><span>© 2026 Emergency Community Response</span><span>Do not delay calling official emergency services</span></div></div></footer>
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
+          <div>
+            <BrandLogo
+              variant="flat"
+              className="w-28"
+              imageClassName="rounded-xl"
+            />
+            <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">
+              Emergency Community Response — safer communities through clearer
+              coordination.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">
+              Explore
+            </p>
+            <div className="mt-4 grid gap-3 text-sm font-bold text-slate-600">
+              <a href="#how-it-works" className="hover:text-emerald-700">
+                How it works
+              </a>
+              <a href="#network" className="hover:text-emerald-700">
+                Response network
+              </a>
+              <a href="/app" className="hover:text-emerald-700">
+                Open reporting app
+              </a>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400">
+              Important
+            </p>
+            <div className="mt-4 grid gap-3 text-sm font-bold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setContactsOpen(true)}
+                className="text-left hover:text-emerald-700"
+              >
+                Call local services
+              </button>
+              <a
+                href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 hover:text-emerald-700"
+              >
+                <MessageCircle size={14} /> WhatsApp updates
+              </a>
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(true)}
+                className="text-left hover:text-emerald-700"
+              >
+                Safety & privacy
+              </button>
+              <span className="inline-flex items-center gap-2 text-xs text-slate-400">
+                <LockKeyhole size={13} /> Authorized access only
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-slate-100">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <span>© 2026 Emergency Community Response</span>
+            <span>Do not delay calling official emergency services</span>
+          </div>
+        </div>
+      </footer>
+      {privacyOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setPrivacyOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="privacy-title"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
+          >
+            <div className="flex items-start justify-between gap-5">
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-800">
+                  <LockKeyhole size={13} /> Safety & privacy
+                </span>
+                <h2
+                  id="privacy-title"
+                  className="mt-4 text-3xl font-black tracking-tight text-slate-950"
+                >
+                  Your safety comes first.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  ECR is designed to help people share the right information
+                  with the right response teams, while keeping control and
+                  context visible to the person reporting.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(false)}
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close safety and privacy dialog"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+                <h3 className="font-black text-rose-950">
+                  For immediate danger
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-rose-900/75">
+                  Call the appropriate official service first. ECR is a
+                  community coordination aid and does not replace police, fire,
+                  ambulance, or hospital services.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrivacyOpen(false);
+                    setContactsOpen(true);
+                  }}
+                  className="mt-3 inline-flex rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"
+                >
+                  Open local contacts
+                </button>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+                <h3 className="font-black text-emerald-950">
+                  Share only what helps
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-emerald-900/75">
+                  Provide a clear description, a safe landmark or location, and
+                  a phone number or email when responders need a way to reach
+                  you.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-5 sm:grid-cols-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">
+                  What we collect
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Your account details and the incident information you choose
+                  to submit, including contact and location context when
+                  provided.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">
+                  Who can see it
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Incident details are limited to you and authorized ECR
+                  administrators or response organizations that need them for
+                  coordination.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">
+                  Your choices
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Location access is optional. Review your report before
+                  sending, avoid unnecessary sensitive details, and sign out on
+                  shared devices.
+                </p>
+              </div>
+            </div>
+            <div className="mt-7 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+              ECR uses secure authentication and access controls for account and
+              incident data. This information explains the product experience
+              and is not a substitute for a formal legal privacy notice.
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(false)}
+                className="rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white transition hover:bg-[#075b55]"
+              >
+                Understood
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      <EmergencyContactsModal
+        open={contactsOpen}
+        onClose={() => setContactsOpen(false)}
+      />
+      <FloatingWhatsApp />
+      <FloatingTikTok />
     </div>
   );
 }
