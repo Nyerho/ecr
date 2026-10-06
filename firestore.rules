@@ -59,7 +59,7 @@ service cloud.firestore {
     match /deviceTokens/{tokenId} {
       allow create, update: if signedIn()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.platform == 'android'
+        && request.resource.data.platform in ['android', 'ios']
         && request.resource.data.token is string;
       allow read, delete: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
