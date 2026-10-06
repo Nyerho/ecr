@@ -289,6 +289,10 @@ function emptyForm(): ReportForm {
   };
 }
 
+function isValidNigerianPhone(value: string) {
+  return /^0\d{10}$/.test(value.trim());
+}
+
 function formatTime(value: Date | string) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
@@ -452,10 +456,13 @@ export default function Home() {
     () => categories.find(item => item.key === selectedCategory),
     [selectedCategory]
   );
+  const phoneValue = form.reporterPhone.trim();
+  const phoneIsValid = !phoneValue || isValidNigerianPhone(phoneValue);
   const canAdvanceDetails = Boolean(
     selectedCategory &&
       form.description.trim().length >= 4 &&
-      (form.reporterPhone.trim() || form.reporterEmail.trim())
+      (form.reporterPhone.trim() || form.reporterEmail.trim()) &&
+      phoneIsValid
   );
   const canAdvanceLocation = true;
 
@@ -614,6 +621,10 @@ export default function Home() {
 
   async function submitReport() {
     if (!selectedCategory || !canAdvanceDetails || !canAdvanceLocation) return;
+    if (phoneValue && !phoneIsValid) {
+      toast.error("Enter an 11-digit Nigerian phone number starting with 0.");
+      return;
+    }
     setIsSubmittingLocal(true);
     const payload = {
       category: selectedCategory,
@@ -723,7 +734,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <div className="hidden items-center gap-2 md:flex">
-            <button onClick={() => setDiagnosticsOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><Activity size={14} />Diagnostics</button>
+            <button title="Optional troubleshooting check for network and service readiness" onClick={() => setDiagnosticsOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><Activity size={14} />Connection check</button>
             {isAdmin && (
               <button
                 onClick={openControlCenter}
@@ -764,7 +775,7 @@ export default function Home() {
         </div>
         {showMenu && (
           <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">
-            <button onClick={() => { setDiagnosticsOpen(true); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><Activity size={16} />Connection diagnostics</button>
+            <button title="Optional troubleshooting check for network and service readiness" onClick={() => { setDiagnosticsOpen(true); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><Activity size={16} />Connection check <span className="ml-auto text-xs font-medium text-slate-500">Optional</span></button>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -1540,18 +1551,16 @@ export default function Home() {
                       <span className="sr-only">Phone number</span>
                       <input
                         value={form.reporterPhone}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterPhone: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterPhone: event.target.value.replace(/\D/g, "").slice(0, 11) }))}
                         type="tel"
                         inputMode="tel"
-                        maxLength={32}
-                        placeholder="Phone number"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        maxLength={11}
+                        pattern="0[0-9]{10}"
+                        aria-invalid={Boolean(phoneValue && !phoneIsValid)}
+                        placeholder="Phone number (08012345678)"
+                        className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500 ${phoneValue && !phoneIsValid ? "border-rose-400 focus:ring-rose-200" : "border-cyan-100"}`}
                       />
+                      {phoneValue && !phoneIsValid && <span className="mt-1 block text-xs font-semibold text-rose-700">Use exactly 11 digits, starting with 0.</span>}
                     </label>
                     <label>
                       <span className="sr-only">Email address</span>

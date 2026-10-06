@@ -11,6 +11,22 @@ import {
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 
+function authErrorMessage(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  if (firebaseSetupMessage()) return firebaseSetupMessage();
+  if (["auth/invalid-credential", "auth/user-not-found", "auth/wrong-password"].includes(code)) return "That email or password is not correct.";
+  if (code === "auth/email-already-in-use") return "An account already exists for this email. Try signing in instead.";
+  if (code === "auth/weak-password") return "Choose a stronger password with at least 8 characters.";
+  if (code === "auth/invalid-email") return "Enter a valid email address.";
+  if (code === "auth/network-request-failed") return "The authentication service could not be reached. Check your internet connection.";
+  if (code === "auth/operation-not-allowed") return "Email/password sign-in is not enabled in the Firebase project yet.";
+  if (code === "permission-denied") return "Your account was created, but its profile could not be saved. Ask the administrator to check Firestore rules.";
+  return "We could not complete that request. Check your details and try again.";
+}
+
 export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [, navigate] = useLocation();
   const isRegister = mode === "register";
@@ -45,11 +61,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
         }
       }
     } catch (submissionError) {
-      setError(
-        resetMode
-          ? "We could not send the reset email. Check the address and try again."
-          : "We could not complete that request. Check your details and try again."
-      );
+      setError(resetMode ? "We could not send the reset email. Check the address and try again." : authErrorMessage(submissionError));
     } finally {
       setIsSubmitting(false);
     }
@@ -184,7 +196,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-12 w-full rounded-xl bg-[#063f3d] text-sm font-black text-white hover:bg-[#075b55]"
+                  className="h-12 w-full rounded-xl bg-[#0aa875] text-sm font-black text-[#042b28] shadow-lg shadow-emerald-950/15 hover:bg-[#35d39e]"
                 >
                   {isSubmitting
                     ? "Please wait…"

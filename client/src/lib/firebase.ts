@@ -72,7 +72,7 @@ export const firestore = app ? getFirestore(app) : null;
 export function firebaseSetupMessage() {
   return firebaseConfigured
     ? ""
-    : "This service is temporarily unavailable. Please try again shortly.";
+    : "Firebase is not configured for this local environment. Copy .env.example to .env and add the Firebase web configuration before signing in or creating an account.";
 }
 
 export function reportSubmissionMessage(error: unknown) {

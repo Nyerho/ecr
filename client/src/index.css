@@ -276,24 +276,24 @@ button:hover .icon-orb {
   }
 }
 
-/* Release 4 dark appearance: keep the emergency palette high-contrast while
-   allowing existing component classes to continue working unchanged. */
+/* System dark appearance: deep teal surfaces with calm mint accents and
+   restrained contrast so long-form report text remains comfortable to read. */
 .dark {
   color-scheme: dark;
-  --background: #10172a;
-  --foreground: #e5edf7;
-  --card: #172033;
-  --card-foreground: #e5edf7;
-  --border: #334155;
-  --input: #334155;
-  --primary: #34d399;
-  --primary-foreground: #062c2a;
-  --ring: #34d399;
+  --background: #0b1f26;
+  --foreground: #dceee9;
+  --card: #112d36;
+  --card-foreground: #dceee9;
+  --border: #28505a;
+  --input: #28505a;
+  --primary: #65d6ad;
+  --primary-foreground: #08231f;
+  --ring: #65d6ad;
 }
 .dark body,
 .dark #root {
-  background: #10172a;
-  color: #e5edf7;
+  background: #0b1f26;
+  color: #dceee9;
 }
 .dark .bg-white,
 .dark .bg-white\/80,
@@ -302,27 +302,57 @@ button:hover .icon-orb {
 .dark .bg-white\/95,
 .dark .bg-slate-50,
 .dark .bg-\[\#f4faf8\]\/95 {
-  background-color: #172033;
+  background-color: #112d36;
 }
 .dark .text-slate-950,
 .dark .text-slate-900,
 .dark .text-slate-800,
 .dark .text-slate-700 {
-  color: #e5edf7;
+  color: #dceee9;
 }
 .dark .text-slate-600,
 .dark .text-slate-500,
 .dark .text-slate-400 {
-  color: #a9b8cc;
+  color: #a8c3c0;
 }
 .dark .border-slate-200,
 .dark .border-slate-200\/80,
 .dark .border-slate-100 {
-  border-color: #334155;
+  border-color: #28505a;
 }
 .dark .bg-\[\#f5f8f7\] {
-  background-color: #10172a;
+  background-color: #0b1f26;
 }
 .dark .operations-surface {
-  background: linear-gradient(180deg, #172033, #10172a);
+  background: linear-gradient(180deg, #112d36, #0b1f26);
+}
+.dark input,
+.dark textarea,
+.dark select {
+  color: #dceee9;
+  background-color: #102833;
+  border-color: #28505a;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #83a5a2;
+}
+.dark .bg-cyan-50\/70 {
+  background-color: rgba(20, 75, 82, 0.72);
+}
+.dark .text-cyan-950,
+.dark .text-cyan-900 {
+  color: #d5efea;
+}
+.dark .text-emerald-900 {
+  color: #c8f4e4;
+}
+.dark .bg-emerald-50 {
+  background-color: #123f3d;
+}
+.dark .bg-rose-50 {
+  background-color: #472532;
+}
+.dark .text-rose-700 {
+  color: #ffb4bd;
 }
