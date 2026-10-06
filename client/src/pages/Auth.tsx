@@ -5,6 +5,7 @@ import {
   firebaseSetupMessage,
   registerFirebaseUser,
   signInFirebaseUser,
+  sendFirebasePasswordReset,
 } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
@@ -18,19 +19,29 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setResetSent(false);
     setIsSubmitting(true);
     try {
       if (firebaseSetupMessage()) throw new Error(firebaseSetupMessage());
-      if (isRegister) await registerFirebaseUser({ name, email, password });
-      else await signInFirebaseUser(email, password);
-      navigate("/app");
+      if (resetMode) {
+        await sendFirebasePasswordReset(email);
+        setResetSent(true);
+      } else {
+        if (isRegister) await registerFirebaseUser({ name, email, password });
+        else await signInFirebaseUser(email, password);
+        navigate("/app");
+      }
     } catch (submissionError) {
       setError(
-        "We could not complete that request. Check your details and try again."
+        resetMode
+          ? "We could not send the reset email. Check the address and try again."
+          : "We could not complete that request. Check your details and try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -77,19 +88,21 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                 Secure account access
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight">
-                {isRegister ? "Create your account" : "Welcome back"}
+                {resetMode ? "Reset your password" : isRegister ? "Create your account" : "Welcome back"}
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-500">
-                {isRegister
-                  ? "Register to submit and track your emergency reports."
-                  : "Sign in to continue to your ECR reporting workspace."}
+                {resetMode
+                  ? "Enter your email and we will send a secure password reset link."
+                  : isRegister
+                    ? "Register to submit and track your emergency reports."
+                    : "Sign in to continue to your ECR reporting workspace."}
               </p>
               <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-900">
                 Your account and session are protected with secure
                 authentication.
               </div>
               <form onSubmit={submit} className="mt-7 space-y-4">
-                {isRegister && (
+                {isRegister && !resetMode && (
                   <label className="block">
                     <span className="text-sm font-bold text-slate-700">
                       Full name
@@ -118,7 +131,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                     placeholder="you@example.com"
                   />
                 </label>
-                <label className="block">
+                <label className={`${resetMode ? "hidden" : "block"}`}>
                   <span className="text-sm font-bold text-slate-700">
                     Password
                   </span>
@@ -147,6 +160,9 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                     </button>
                   </span>
                 </label>
+                {resetSent && (
+                  <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Password reset email sent. Check your inbox and spam folder.</p>
+                )}
                 {error && (
                   <p
                     role="alert"
@@ -162,11 +178,18 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                 >
                   {isSubmitting
                     ? "Please wait…"
-                    : isRegister
-                      ? "Create account"
-                      : "Sign in"}
+                    : resetMode
+                      ? "Send reset link"
+                      : isRegister
+                        ? "Create account"
+                        : "Sign in"}
                 </Button>
               </form>
+              {!isRegister && (
+                <button type="button" onClick={() => { setResetMode(value => !value); setError(""); setResetSent(false); }} className="mt-4 block w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900">
+                  {resetMode ? "Back to sign in" : "Forgot your password?"}
+                </button>
+              )}
               <p className="mt-7 text-center text-sm text-slate-500">
                 {isRegister ? "Already have an account?" : "New to ECR?"}{" "}
                 <Link

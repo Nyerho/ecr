@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   type User as FirebaseUser,
@@ -141,6 +142,10 @@ export async function ensureAnonymousFirebaseUser() {
   const credential = await signInAnonymously(auth);
   return credential.user;
 }
+export function sendFirebasePasswordReset(email: string) {
+  return sendPasswordResetEmail(requireAuth(), email.trim().toLowerCase());
+}
+
 export function signInFirebaseUser(email: string, password: string) {
   return signInWithEmailAndPassword(
     requireAuth(),

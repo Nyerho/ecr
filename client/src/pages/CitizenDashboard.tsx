@@ -359,6 +359,7 @@ export default function Home() {
   );
   const [form, setForm] = useState<ReportForm>(emptyForm);
   const [photoDrafts, setPhotoDrafts] = useState<IncidentPhotoDraft[]>([]);
+  const [savedReportDraft, setSavedReportDraft] = useState<{ reportStep: "category" | "details" | "location" | "review"; selectedCategory: CategoryKey | null; form: ReportForm } | null>(null);
   const [view, setView] = useState<"citizen" | "operations">("citizen");
   const [adminPromptOpen, setAdminPromptOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -366,6 +367,7 @@ export default function Home() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
+  const reportDraftStorageKey = "ecr-report-draft";
 
   const isAdmin = user?.role === "admin";
   const adminStatus = trpc.admin.status.useQuery(undefined, {
@@ -446,6 +448,37 @@ export default function Home() {
   const canAdvanceLocation = true;
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(reportDraftStorageKey);
+      if (raw) setSavedReportDraft(JSON.parse(raw));
+    } catch {
+      setSavedReportDraft(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!reportOpen || (!selectedCategory && !form.description && !form.locationLabel)) return;
+    try {
+      window.localStorage.setItem(reportDraftStorageKey, JSON.stringify({ reportStep, selectedCategory, form }));
+      setSavedReportDraft({ reportStep, selectedCategory, form });
+    } catch {
+      // Draft persistence is best-effort; the user can continue normally.
+    }
+  }, [reportOpen, reportStep, selectedCategory, form]);
+
+  useEffect(() => {
+    if (!reportOpen) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (form.description.trim() || form.locationLabel.trim()) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [reportOpen, form.description, form.locationLabel]);
+
+  useEffect(() => {
     if (!user || !firebaseConfigured) {
       setLocalIncidents([]);
       return;
@@ -481,6 +514,19 @@ export default function Home() {
     setLocationMessage("");
     setReportOpen(true);
     setReportStep("category");
+  }
+
+  function resumeSavedReport() {
+    if (!savedReportDraft) return;
+    setSelectedCategory(savedReportDraft.selectedCategory);
+    setForm(savedReportDraft.form);
+    setReportStep(savedReportDraft.reportStep);
+    setReportOpen(true);
+  }
+
+  function discardSavedReport() {
+    window.localStorage.removeItem(reportDraftStorageKey);
+    setSavedReportDraft(null);
   }
 
   function startReportWithCategory(categoryKey: CategoryKey) {
@@ -566,6 +612,8 @@ export default function Home() {
       setSelectedCategory(null);
       setForm(emptyForm());
       setPhotoDrafts([]);
+      window.localStorage.removeItem(reportDraftStorageKey);
+      setSavedReportDraft(null);
     } catch (error) {
       toast.error(reportSubmissionMessage(error));
     } finally {
@@ -1251,6 +1299,13 @@ export default function Home() {
           </section>
         </div>
       )}
+      {!reportOpen && savedReportDraft && (
+        <div className="fixed bottom-5 left-1/2 z-40 w-[min(92vw,34rem)] -translate-x-1/2 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-xl backdrop-blur">
+          <p className="text-sm font-black text-slate-900">You have an unfinished report</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Your draft is saved on this device. Resume it or discard it.</p>
+          <div className="mt-3 flex gap-2"><Button onClick={resumeSavedReport} className="flex-1 rounded-xl bg-[#063f3d] text-xs">Resume draft</Button><Button onClick={discardSavedReport} variant="outline" className="rounded-xl text-xs">Discard</Button></div>
+        </div>
+      )}
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
           <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white/95 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
@@ -1276,7 +1331,8 @@ export default function Home() {
                 <X size={20} />
               </button>
             </div>
-            <div className="mt-6 flex items-center gap-2">
+            <p className="mt-5 text-xs font-bold text-slate-500" aria-live="polite">Step { ["category", "details", "location", "review"].indexOf(reportStep) + 1 } of 4 · {reportStep === "category" ? "Choose emergency type" : reportStep === "details" ? "Describe what happened" : reportStep === "location" ? "Confirm location" : "Review before sending"}</p>
+            <div className="mt-3 flex items-center gap-2" aria-label={`Report progress: step ${["category", "details", "location", "review"].indexOf(reportStep) + 1} of 4`}>
               {["category", "details", "location", "review"].map(
                 (step, index) => (
                   <span
