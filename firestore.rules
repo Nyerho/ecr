@@ -49,6 +49,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /contentReports/{reportId} {
+      allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.messageId is string
+        && request.resource.data.reason is string;
+      allow read: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
     match /deviceTokens/{tokenId} {
       allow create, update: if signedIn()
         && request.resource.data.uid == request.auth.uid

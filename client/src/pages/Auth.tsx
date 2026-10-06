@@ -6,6 +6,7 @@ import {
   registerFirebaseUser,
   signInFirebaseUser,
   sendFirebasePasswordReset,
+  sendFirebaseVerificationEmail,
 } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
@@ -21,6 +22,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetMode, setResetMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,9 +35,14 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
         await sendFirebasePasswordReset(email);
         setResetSent(true);
       } else {
-        if (isRegister) await registerFirebaseUser({ name, email, password });
-        else await signInFirebaseUser(email, password);
-        navigate("/app");
+        if (isRegister) {
+          const registeredUser = await registerFirebaseUser({ name, email, password });
+          await sendFirebaseVerificationEmail(registeredUser);
+          setVerificationSent(true);
+        } else {
+          await signInFirebaseUser(email, password);
+          navigate("/app");
+        }
       }
     } catch (submissionError) {
       setError(
@@ -160,6 +167,9 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                     </button>
                   </span>
                 </label>
+                {verificationSent && (
+                  <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Account created. We sent a verification link to your email. Verify it before posting in Chatter.</p>
+                )}
                 {resetSent && (
                   <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Password reset email sent. Check your inbox and spam folder.</p>
                 )}

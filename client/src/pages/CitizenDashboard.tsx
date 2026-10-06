@@ -367,6 +367,7 @@ export default function Home() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
+  const previousReportStatuses = useRef<Record<string, string>>({});
   const reportDraftStorageKey = "ecr-report-draft";
 
   const isAdmin = user?.role === "admin";
@@ -489,6 +490,18 @@ export default function Home() {
       )
     );
   }, [user]);
+
+  useEffect(() => {
+    if (!localIncidents.length) return;
+    const previous = previousReportStatuses.current;
+    localIncidents.forEach(incident => {
+      const oldStatus = previous[incident.publicReference];
+      if (oldStatus && oldStatus !== incident.status) {
+        toast.info(`${incident.publicReference}: ${statusLabels[incident.status as Status] ?? incident.status}`);
+      }
+      previous[incident.publicReference] = incident.status;
+    });
+  }, [localIncidents]);
 
   useEffect(() => {
     if (!operations.data) return;

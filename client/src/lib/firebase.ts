@@ -6,6 +6,7 @@ import {
   signInAnonymously,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   signOut,
   updateProfile,
   type User as FirebaseUser,
@@ -142,6 +143,10 @@ export async function ensureAnonymousFirebaseUser() {
   const credential = await signInAnonymously(auth);
   return credential.user;
 }
+export function sendFirebaseVerificationEmail(user: FirebaseUser) {
+  return sendEmailVerification(user);
+}
+
 export function sendFirebasePasswordReset(email: string) {
   return sendPasswordResetEmail(requireAuth(), email.trim().toLowerCase());
 }
