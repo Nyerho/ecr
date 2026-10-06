@@ -275,3 +275,54 @@ button:hover .icon-orb {
     scroll-behavior: auto !important;
   }
 }
+
+/* Release 4 dark appearance: keep the emergency palette high-contrast while
+   allowing existing component classes to continue working unchanged. */
+.dark {
+  color-scheme: dark;
+  --background: #10172a;
+  --foreground: #e5edf7;
+  --card: #172033;
+  --card-foreground: #e5edf7;
+  --border: #334155;
+  --input: #334155;
+  --primary: #34d399;
+  --primary-foreground: #062c2a;
+  --ring: #34d399;
+}
+.dark body,
+.dark #root {
+  background: #10172a;
+  color: #e5edf7;
+}
+.dark .bg-white,
+.dark .bg-white\/80,
+.dark .bg-white\/85,
+.dark .bg-white\/90,
+.dark .bg-white\/95,
+.dark .bg-slate-50,
+.dark .bg-\[\#f4faf8\]\/95 {
+  background-color: #172033;
+}
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: #e5edf7;
+}
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: #a9b8cc;
+}
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-100 {
+  border-color: #334155;
+}
+.dark .bg-\[\#f5f8f7\] {
+  background-color: #10172a;
+}
+.dark .operations-surface {
+  background: linear-gradient(180deg, #172033, #10172a);
+}

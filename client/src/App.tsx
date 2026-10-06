@@ -9,6 +9,7 @@ import CitizenDashboard from "./pages/CitizenDashboard";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import CookieConsent from "./components/CookieConsent";
+import ThemeToggle from "./components/ThemeToggle";
 
 function Router() {
   return (
@@ -28,9 +29,12 @@ function Router() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" switchable>
         <TooltipProvider>
           <Toaster />
+          <div className="fixed right-4 top-4 z-[60]">
+            <ThemeToggle />
+          </div>
           <Router />
           <CookieConsent />
         </TooltipProvider>

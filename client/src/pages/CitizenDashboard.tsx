@@ -7,6 +7,14 @@ import {
   getNextLocalStatus,
   type LocalIncident,
 } from "@/lib/localIncidents";
+import {
+  isRetryableReportError,
+  loadPendingReports,
+  queuePendingReport,
+  removePendingReport,
+  updatePendingReport,
+  type PendingReport,
+} from "@/lib/localOfflineReports";
 import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
 import {
   createFirestoreIncident,
@@ -360,6 +368,7 @@ export default function Home() {
   const [form, setForm] = useState<ReportForm>(emptyForm);
   const [photoDrafts, setPhotoDrafts] = useState<IncidentPhotoDraft[]>([]);
   const [savedReportDraft, setSavedReportDraft] = useState<{ reportStep: "category" | "details" | "location" | "review"; selectedCategory: CategoryKey | null; form: ReportForm } | null>(null);
+  const [pendingReports, setPendingReports] = useState<PendingReport[]>([]);
   const [view, setView] = useState<"citizen" | "operations">("citizen");
   const [adminPromptOpen, setAdminPromptOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -455,6 +464,13 @@ export default function Home() {
     } catch {
       setSavedReportDraft(null);
     }
+  }, []);
+
+  useEffect(() => {
+    setPendingReports(loadPendingReports());
+    const refresh = () => setPendingReports(loadPendingReports());
+    window.addEventListener("online", refresh);
+    return () => window.removeEventListener("online", refresh);
   }, []);
 
   useEffect(() => {
@@ -597,18 +613,21 @@ export default function Home() {
   async function submitReport() {
     if (!selectedCategory || !canAdvanceDetails || !canAdvanceLocation) return;
     setIsSubmittingLocal(true);
+    const payload = {
+      category: selectedCategory,
+      description: form.description.trim(),
+      reporterName: form.reporterName.trim() || undefined,
+      locationLabel: form.locationLabel.trim() || undefined,
+      latitude: form.latitude || undefined,
+      longitude: form.longitude || undefined,
+      reporterPhone: form.reporterPhone.trim() || undefined,
+      reporterEmail: form.reporterEmail.trim() || undefined,
+    };
     try {
       const reporter = user ?? (await ensureAnonymousFirebaseUser());
       const result = await createFirestoreIncident({
         reporterUid: reporter.uid,
-        reporterName: form.reporterName.trim() || undefined,
-        category: selectedCategory,
-        description: form.description.trim(),
-        locationLabel: form.locationLabel.trim() || undefined,
-        latitude: form.latitude || undefined,
-        longitude: form.longitude || undefined,
-        reporterPhone: form.reporterPhone.trim() || undefined,
-        reporterEmail: form.reporterEmail.trim() || undefined,
+        ...payload,
       });
       setReportReceipt({
         reference: result.publicReference,
@@ -628,9 +647,39 @@ export default function Home() {
       window.localStorage.removeItem(reportDraftStorageKey);
       setSavedReportDraft(null);
     } catch (error) {
-      toast.error(reportSubmissionMessage(error));
+      if (isRetryableReportError(error)) {
+        const pending = queuePendingReport(payload, reportSubmissionMessage(error));
+        setPendingReports(loadPendingReports());
+        setReportOpen(false);
+        toast.warning("No connection. Your report is saved on this device and can be retried when you are online.");
+        setReportStep("category");
+        setSelectedCategory(null);
+        setForm(emptyForm());
+        window.localStorage.removeItem(reportDraftStorageKey);
+        setSavedReportDraft(null);
+        void pending;
+      } else {
+        toast.error(reportSubmissionMessage(error));
+      }
     } finally {
       setIsSubmittingLocal(false);
+    }
+  }
+
+  async function retryPendingReport(pending: PendingReport) {
+    updatePendingReport(pending.id, { attempts: pending.attempts + 1, lastError: "Retrying…" });
+    setPendingReports(loadPendingReports());
+    try {
+      const reporter = user ?? (await ensureAnonymousFirebaseUser());
+      const result = await createFirestoreIncident({ reporterUid: reporter.uid, ...pending });
+      removePendingReport(pending.id);
+      setPendingReports(loadPendingReports());
+      setReportReceipt({ reference: result.publicReference, location: pending.locationLabel || "Location shared privately" });
+      toast.success(`Queued report submitted (${result.publicReference})`);
+    } catch (error) {
+      updatePendingReport(pending.id, { lastError: reportSubmissionMessage(error) });
+      setPendingReports(loadPendingReports());
+      toast.error(isRetryableReportError(error) ? "Still offline. Your report remains safely queued." : reportSubmissionMessage(error));
     }
   }
 
@@ -1310,6 +1359,20 @@ export default function Home() {
               service directly.
             </p>
           </section>
+        </div>
+      )}
+      {!reportOpen && pendingReports.length > 0 && (
+        <div className="fixed bottom-5 left-1/2 z-40 w-[min(92vw,34rem)] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 p-4 shadow-xl backdrop-blur" role="status" aria-live="polite">
+          <p className="text-sm font-black text-amber-950">{pendingReports.length} report{pendingReports.length === 1 ? "" : "s"} waiting to upload</p>
+          <p className="mt-1 text-xs leading-5 text-amber-900/80">Your information is saved on this device. Retry only when you have a connection; it will not be shared until the upload is confirmed.</p>
+          <div className="mt-3 space-y-2">
+            {pendingReports.map(pending => (
+              <div key={pending.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 text-xs">
+                <span className="min-w-0 truncate font-semibold text-amber-950">{pending.category.replaceAll("_", " ")} · {new Date(pending.queuedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <Button onClick={() => retryPendingReport(pending)} variant="outline" className="shrink-0 rounded-lg border-amber-300 text-xs text-amber-900">Retry</Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {!reportOpen && savedReportDraft && (
