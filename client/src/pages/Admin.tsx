@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Share2,
   Phone,
+  Trash2,
   Users,
   UserRound,
   X,
@@ -32,7 +33,12 @@ import {
   updateFirestoreIncident,
   updateFirestoreUserRole,
   createFirestoreOrganization,
+  createEmergencyContact,
+  deleteEmergencyContact,
+  ensureDefaultEmergencyContacts,
+  subscribeToEmergencyContacts,
   writeFirestoreAudit,
+  type EmergencyContactRecord,
   type FirebaseProfile,
   type FirestoreIncident,
   type UserRole,
@@ -54,12 +60,20 @@ type AuditLog = {
   resourceId?: string;
   createdAt?: unknown;
 };
+type EmergencyContactForm = {
+  name: string;
+  area: string;
+  description: string;
+  numbers: string;
+  icon: EmergencyContactRecord["icon"];
+};
 type Tab =
   | "overview"
   | "incidents"
   | "community"
   | "users"
   | "organizations"
+  | "contacts"
   | "audit";
 const roles: UserRole[] = [
   "citizen",
@@ -120,6 +134,9 @@ export default function Admin() {
   const [users, setUsers] = useState<FirebaseProfile[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [emergencyContacts, setEmergencyContacts] = useState<
+    EmergencyContactRecord[]
+  >([]);
   const [selectedIncident, setSelectedIncident] =
     useState<FirestoreIncident | null>(null);
   const [loadingData, setLoadingData] = useState(true);
@@ -128,13 +145,20 @@ export default function Admin() {
     type: "medical",
     code: "",
   });
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    area: "",
+    description: "",
+    numbers: "",
+    icon: "default" as EmergencyContactRecord["icon"],
+  });
 
   useEffect(() => {
     if (!user || user.role !== "admin" || !firebaseConfigured) return;
     let ready = 0;
     const markReady = () => {
       ready += 1;
-      if (ready >= 4) setLoadingData(false);
+      if (ready >= 5) setLoadingData(false);
     };
     const stops = [
       subscribeToAdminCollection<FirestoreIncident>("incidents", rows => {
@@ -156,6 +180,16 @@ export default function Admin() {
         setAuditLogs(rows);
         markReady();
       }),
+      subscribeToEmergencyContacts(
+        rows => {
+          setEmergencyContacts(rows);
+          markReady();
+          if (!rows.length) {
+            void ensureDefaultEmergencyContacts().catch(() => undefined);
+          }
+        },
+        () => markReady()
+      ),
     ];
     return () => stops.forEach(stop => stop());
   }, [user]);
@@ -227,6 +261,82 @@ export default function Admin() {
     }
   }
 
+  async function addEmergencyContact() {
+    if (
+      !user ||
+      !contactForm.name.trim() ||
+      !contactForm.area.trim() ||
+      !contactForm.description.trim() ||
+      !contactForm.numbers.trim()
+    )
+      return;
+    try {
+      await createEmergencyContact(
+        {
+          name: contactForm.name.trim(),
+          area: contactForm.area.trim(),
+          description: contactForm.description.trim(),
+          numbers: contactForm.numbers
+            .split(",")
+            .map(number => number.trim())
+            .filter(Boolean),
+          icon: contactForm.icon,
+          tone:
+            contactForm.icon === "medical"
+              ? "border-emerald-100 bg-emerald-50/70 text-emerald-900"
+              : contactForm.icon === "police"
+                ? "border-blue-100 bg-blue-50/70 text-blue-900"
+                : contactForm.icon === "fire"
+                  ? "border-orange-100 bg-orange-50/70 text-orange-900"
+                  : "border-slate-200 bg-slate-50 text-slate-900",
+        },
+        user.uid
+      );
+      await writeFirestoreAudit({
+        actorUid: user.uid,
+        action: "emergency_contact.created",
+        resourceType: "emergencyContact",
+        metadata: { name: contactForm.name.trim() },
+      });
+      setContactForm({
+        name: "",
+        area: "",
+        description: "",
+        numbers: "",
+        icon: "default",
+      });
+      toast.success("Emergency contact added");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not add emergency contact."
+      );
+    }
+  }
+
+  async function removeEmergencyContact(contact: EmergencyContactRecord) {
+    if (!user || !window.confirm(`Remove ${contact.name} from the directory?`))
+      return;
+    try {
+      await deleteEmergencyContact(contact.id);
+      await writeFirestoreAudit({
+        actorUid: user.uid,
+        action: "emergency_contact.deleted",
+        resourceType: "emergencyContact",
+        resourceId: contact.id,
+        metadata: { name: contact.name },
+      });
+      toast.success("Emergency contact removed");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not remove emergency contact."
+      );
+    }
+  }
+
   async function updateIncidentStatus(
     incident: FirestoreIncident,
     status: string
@@ -278,6 +388,7 @@ export default function Admin() {
       { key: "community", label: "Community room", icon: MessageCircle },
       { key: "users", label: "Users & roles", icon: Users },
       { key: "organizations", label: "Organizations", icon: Building2 },
+      { key: "contacts", label: "Emergency contacts", icon: Phone },
       { key: "audit", label: "Audit log", icon: ShieldCheck },
     ];
 
@@ -387,6 +498,15 @@ export default function Admin() {
                   form={orgForm}
                   setForm={setOrgForm}
                   onAdd={addOrganization}
+                />
+              )}
+              {tab === "contacts" && (
+                <EmergencyContactsPanel
+                  contacts={emergencyContacts}
+                  form={contactForm}
+                  setForm={setContactForm}
+                  onAdd={addEmergencyContact}
+                  onRemove={removeEmergencyContact}
                 />
               )}
               {tab === "audit" && <AuditTable logs={auditLogs} />}
@@ -1064,6 +1184,136 @@ function OrganizationPanel({
           {!organizations.length && (
             <EmptyState text="No organizations found." />
           )}
+        </div>
+      </DataPanel>
+    </div>
+  );
+}
+function EmergencyContactsPanel({
+  contacts,
+  form,
+  setForm,
+  onAdd,
+  onRemove,
+}: {
+  contacts: EmergencyContactRecord[];
+  form: EmergencyContactForm;
+  setForm: (form: EmergencyContactForm) => void;
+  onAdd: () => void;
+  onRemove: (contact: EmergencyContactRecord) => void;
+}) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <DataPanel
+        eyebrow="Public directory"
+        title="Add emergency contact"
+        description="Publish a verified authority, hospital, responder, or support contact to the citizen directory."
+      >
+        <div className="space-y-4">
+          <label className="field-label">
+            Name
+            <input
+              className="field-control"
+              value={form.name}
+              onChange={event => setForm({ ...form, name: event.target.value })}
+              placeholder="Ughelli rescue service"
+            />
+          </label>
+          <label className="field-label">
+            Area or department
+            <input
+              className="field-control"
+              value={form.area}
+              onChange={event => setForm({ ...form, area: event.target.value })}
+              placeholder="Fire and rescue · Ughelli"
+            />
+          </label>
+          <label className="field-label">
+            Description
+            <textarea
+              className="field-control min-h-24"
+              value={form.description}
+              onChange={event =>
+                setForm({ ...form, description: event.target.value })
+              }
+              placeholder="What should residents contact this service for?"
+            />
+          </label>
+          <label className="field-label">
+            Phone numbers
+            <input
+              className="field-control"
+              value={form.numbers}
+              onChange={event => setForm({ ...form, numbers: event.target.value })}
+              placeholder="112, 0803 123 4567"
+            />
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Separate multiple numbers with commas.
+            </span>
+          </label>
+          <label className="field-label">
+            Directory icon
+            <select
+              className="field-control"
+              value={form.icon}
+              onChange={event =>
+                setForm({
+                  ...form,
+                  icon: event.target.value as EmergencyContactRecord["icon"],
+                })
+              }
+            >
+              <option value="default">General support</option>
+              <option value="medical">Medical</option>
+              <option value="police">Police / security</option>
+              <option value="fire">Fire / rescue</option>
+            </select>
+          </label>
+          <Button
+            className="w-full"
+            onClick={onAdd}
+            disabled={
+              !form.name.trim() ||
+              !form.area.trim() ||
+              !form.description.trim() ||
+              !form.numbers.trim()
+            }
+          >
+            <Phone size={16} /> Add emergency contact
+          </Button>
+        </div>
+      </DataPanel>
+      <DataPanel
+        eyebrow="Public directory"
+        title="Published emergency contacts"
+        description="Removing a contact takes it out of the citizen app immediately."
+      >
+        <div className="space-y-3">
+          {contacts.map(contact => (
+            <div
+              key={contact.id}
+              className="flex items-start justify-between gap-3 rounded-xl border border-border p-4"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-black">{contact.name}</p>
+                <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                  {contact.area}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {contact.numbers.join(" · ")}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                onClick={() => onRemove(contact)}
+              >
+                <Trash2 size={14} /> Remove
+              </Button>
+            </div>
+          ))}
+          {!contacts.length && <EmptyState text="No emergency contacts published." />}
         </div>
       </DataPanel>
     </div>

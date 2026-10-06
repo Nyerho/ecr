@@ -63,6 +63,15 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /emergencyContacts/{contactId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+
     match /auditLogs/{auditId} {
       allow create: if isAdmin() && request.resource.data.actorUid == request.auth.uid;
       allow read: if isAdmin();

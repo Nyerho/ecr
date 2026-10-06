@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
@@ -13,6 +14,7 @@ import {
   addDoc,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getFirestore,
@@ -29,6 +31,17 @@ import {
   type QueryDocumentSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
+
+const androidFirebaseConfig = {
+  apiKey: "AIzaSyD9pgcxG9kJAIJr0YmLm2y1lsSMI68OL_g",
+  authDomain: "emergencyresponse-af0ac.firebaseapp.com",
+  projectId: "emergencyresponse-af0ac",
+  storageBucket: "emergencyresponse-af0ac.firebasestorage.app",
+  messagingSenderId: "216836030362",
+  appId: "1:216836030362:web:a462d8feda1716f6348423",
+};
+const isNativeAndroid =
+  Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 
 export type UserRole =
   | "citizen"
@@ -50,12 +63,12 @@ export type FirebaseProfile = {
 };
 
 const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (isNativeAndroid ? androidFirebaseConfig.apiKey : ""),
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (isNativeAndroid ? androidFirebaseConfig.authDomain : ""),
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || (isNativeAndroid ? androidFirebaseConfig.projectId : ""),
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (isNativeAndroid ? androidFirebaseConfig.storageBucket : ""),
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || (isNativeAndroid ? androidFirebaseConfig.messagingSenderId : ""),
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || (isNativeAndroid ? androidFirebaseConfig.appId : ""),
 };
 
 export const firebaseConfigured = Object.values(config).every(Boolean);
@@ -260,6 +273,116 @@ export type CommunityMessage = {
   visibility: "public" | "hidden";
   createdAt?: unknown;
 };
+
+export type EmergencyContactRecord = {
+  id: string;
+  name: string;
+  area: string;
+  description: string;
+  numbers: string[];
+  telNumbers?: string[];
+  icon: "medical" | "police" | "fire" | "default";
+  tone: string;
+  createdAt?: unknown;
+};
+
+export const DEFAULT_EMERGENCY_CONTACTS: Array<
+  Omit<EmergencyContactRecord, "id" | "createdAt">
+> = [
+  {
+    name: "Delta State emergency ambulance",
+    area: "Delta State · DELSEAS",
+    description: "For urgent medical transport and ambulance coordination.",
+    numbers: ["112", "0704 100 8130", "0704 100 8131"],
+    telNumbers: ["+234112", "+2347041008130", "+2347041008131"],
+    icon: "medical",
+    tone: "border-rose-100 bg-rose-50/70 text-rose-900",
+  },
+  {
+    name: "Delta State Police control room",
+    area: "Police · Delta State",
+    description: "For immediate security threats, crime, violence, or protection needs.",
+    numbers: ["0803 668 4974"],
+    icon: "police",
+    tone: "border-blue-100 bg-blue-50/70 text-blue-900",
+  },
+  {
+    name: "Ughelli fire service",
+    area: "Fire and rescue · Ughelli",
+    description: "For fires, rescue situations, and other fire-service incidents in the Ughelli area.",
+    numbers: ["0806 535 6844"],
+    icon: "fire",
+    tone: "border-orange-100 bg-orange-50/70 text-orange-900",
+  },
+  {
+    name: "Ughelli Central Hospital",
+    area: "Oteri Road · Ughelli Urban 2",
+    description: "Public secondary hospital with accident and emergency services listed.",
+    numbers: ["0705 639 8074"],
+    icon: "medical",
+    tone: "border-emerald-100 bg-emerald-50/70 text-emerald-900",
+  },
+  {
+    name: "Lily Hospitals Ughelli",
+    area: "Olori Crescent · off Ughelli–Patani Expressway",
+    description: "Private hospital with multi-specialist and diagnostic services.",
+    numbers: ["0915 263 3242", "0704 137 7925"],
+    telNumbers: ["+2349152633242", "+2347041377925"],
+    icon: "medical",
+    tone: "border-teal-100 bg-teal-50/70 text-teal-900",
+  },
+];
+
+export function subscribeToEmergencyContacts(
+  callback: (contacts: EmergencyContactRecord[]) => void,
+  onError: (error: unknown) => void
+) {
+  return onSnapshot(
+    query(collection(requireFirestore(), "emergencyContacts"), limit(100)),
+    snapshot => {
+      callback(
+        snapshot.docs
+          .map(
+            contact =>
+              ({ id: contact.id, ...contact.data() }) as EmergencyContactRecord
+          )
+          .sort((left, right) => left.name.localeCompare(right.name))
+      );
+    },
+    onError
+  );
+}
+
+export async function ensureDefaultEmergencyContacts() {
+  const database = requireFirestore();
+  const marker = doc(database, "settings", "emergencyContacts");
+  if ((await getDoc(marker)).exists()) return;
+  const batch = writeBatch(database);
+  DEFAULT_EMERGENCY_CONTACTS.forEach((contact, index) => {
+    batch.set(doc(database, "emergencyContacts", `default-${index + 1}`), {
+      ...contact,
+      createdAt: serverTimestamp(),
+    });
+  });
+  batch.set(marker, { seeded: true, createdAt: serverTimestamp() });
+  await batch.commit();
+}
+
+export async function createEmergencyContact(
+  contact: Omit<EmergencyContactRecord, "id" | "createdAt">,
+  actorUid: string
+) {
+  const reference = await addDoc(collection(requireFirestore(), "emergencyContacts"), {
+    ...contact,
+    createdBy: actorUid,
+    createdAt: serverTimestamp(),
+  });
+  return reference.id;
+}
+
+export function deleteEmergencyContact(id: string) {
+  return deleteDoc(doc(requireFirestore(), "emergencyContacts", id));
+}
 
 function subscribeToChatSource(
   source: ReturnType<typeof query>,
