@@ -58,7 +58,7 @@ export default function DiagnosticsPanel({ open, onClose }: { open: boolean; onC
   }
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-labelledby="diagnostics-title">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl border border-white/80 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-7">
+      <div className="glass-card max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">Release 5</p><h2 id="diagnostics-title" className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Connection diagnostics</h2><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">A quick local check for troubleshooting. It does not read or display report details.</p></div>
           <button onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close diagnostics"><X size={20} /></button>

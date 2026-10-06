@@ -730,7 +730,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_12px_40px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/55 shadow-[0_12px_40px_rgba(6,63,61,0.08)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <div className="hidden items-center gap-2 md:flex">
@@ -1248,7 +1248,7 @@ export default function Home() {
 
       {adminPromptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-xl">
-          <div className="glass-card w-full max-w-md rounded-[2rem] border border-white/60 bg-white/90 p-6 shadow-2xl sm:p-8">
+          <div className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between">
               <div>
                 <span className="icon-orb grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
@@ -1324,7 +1324,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="receipt-title"
-            className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8"
+            className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8"
           >
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
               <CheckCircle2 size={28} />
@@ -1399,7 +1399,7 @@ export default function Home() {
       )}
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white/95 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
+          <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
             <div className="flex min-w-0 items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="break-words text-xs font-black uppercase tracking-[0.18em] text-emerald-700">

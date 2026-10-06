@@ -70,7 +70,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   return (
     <main className="min-h-screen bg-[#f5f8f7] px-4 py-8 text-slate-950 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
-        <div className="grid w-full overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="glass-card grid w-full overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="hidden bg-[#063f3d] p-10 text-white lg:block lg:p-14">
             <div>
               <BrandLogo

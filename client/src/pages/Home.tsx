@@ -182,7 +182,7 @@ function PublicReportTracker() {
             <p className="mt-3 text-sm font-bold text-rose-700">{error}</p>
           )}
         </div>
-        <div className="rounded-3xl border border-white bg-white/80 p-5 shadow-sm sm:p-6">
+        <div className="glass-surface rounded-3xl p-5 shadow-sm sm:p-6">
           {!reference && (
             <div className="grid min-h-48 place-items-center text-center text-sm text-slate-500">
               <div>
@@ -278,7 +278,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/80 backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/55 shadow-[0_10px_35px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <nav
@@ -580,7 +580,7 @@ export default function Home() {
               </a>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+              <div className="glass-surface rounded-3xl p-6 shadow-sm">
                 <UsersRound className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For communities</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -588,7 +588,7 @@ export default function Home() {
                   as the status changes.
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+              <div className="glass-surface rounded-3xl p-6 shadow-sm">
                 <ShieldCheck className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For agencies</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -596,7 +596,7 @@ export default function Home() {
                   context, and a traceable audit trail.
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+              <div className="glass-surface rounded-3xl p-6 shadow-sm">
                 <Clock3 className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For responders</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -604,7 +604,7 @@ export default function Home() {
                   reporting close to the loop.
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/80 bg-white/75 p-6 shadow-sm">
+              <div className="glass-surface rounded-3xl p-6 shadow-sm">
                 <LockKeyhole className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For trust</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -731,7 +731,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="privacy-title"
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
+            className="glass-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] p-6 shadow-2xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-5">
               <div>
