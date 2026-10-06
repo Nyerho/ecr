@@ -6,11 +6,8 @@
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.26",
-<<<<<<< Updated upstream
-    "expo-device": "~57.0.2",
-=======
     "expo-dev-client": "~57.0.19",
->>>>>>> Stashed changes
+    "expo-device": "~57.0.2",
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.11",
     "expo-location": "~57.0.20",
