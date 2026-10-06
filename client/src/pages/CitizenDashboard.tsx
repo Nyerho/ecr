@@ -26,6 +26,7 @@ import {
 } from "@/lib/firebase";
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
+import DiagnosticsPanel from "@/components/DiagnosticsPanel";
 import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
@@ -352,6 +353,7 @@ export default function Home() {
   const [localLifecycleMessage, setLocalLifecycleMessage] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReceipt, setReportReceipt] = useState<{
@@ -721,6 +723,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <div className="hidden items-center gap-2 md:flex">
+            <button onClick={() => setDiagnosticsOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><Activity size={14} />Diagnostics</button>
             {isAdmin && (
               <button
                 onClick={openControlCenter}
@@ -761,6 +764,7 @@ export default function Home() {
         </div>
         {showMenu && (
           <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">
+            <button onClick={() => { setDiagnosticsOpen(true); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><Activity size={16} />Connection diagnostics</button>
             {isAdmin && (
               <button
                 onClick={() => {
