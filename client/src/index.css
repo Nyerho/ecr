@@ -431,3 +431,86 @@ button:hover .icon-orb {
 .dark .text-rose-700 {
   color: #ffb4bd;
 }
+
+/* Admin control-center presentation layer. These classes intentionally style
+   existing workflows without changing navigation, data access, or actions. */
+.admin-shell {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(52, 211, 153, 0.12), transparent 28%),
+    var(--background);
+}
+.admin-header {
+  box-shadow: 0 12px 38px rgba(6, 63, 61, 0.07);
+}
+.admin-sidebar {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+.admin-protected {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.94), rgba(224, 242, 241, 0.68));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 12px 28px rgba(6, 63, 61, 0.06);
+}
+.admin-nav-item {
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+}
+.admin-nav-item:hover {
+  border-color: rgba(16, 185, 129, 0.18);
+  transform: translateX(2px);
+}
+.admin-nav-active {
+  box-shadow: 0 10px 24px rgba(6, 63, 61, 0.16);
+}
+.admin-panel {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 18px 48px rgba(6, 63, 61, 0.08);
+}
+.admin-modal {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(26px) saturate(135%);
+  -webkit-backdrop-filter: blur(26px) saturate(135%);
+}
+.admin-inset {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+@media (max-width: 1023px) {
+  .admin-sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .admin-protected {
+    grid-column: 1 / -1;
+    margin-bottom: 0.5rem;
+  }
+}
+@media (max-width: 640px) {
+  .admin-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.dark .admin-shell {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(52, 211, 153, 0.12), transparent 28%),
+    #0b1f26;
+}
+.dark .admin-header,
+.dark .admin-panel,
+.dark .admin-modal {
+  background: rgba(23, 59, 69, 0.82);
+  border-color: rgba(155, 224, 207, 0.18);
+  box-shadow: inset 0 1px 0 rgba(224, 255, 246, 0.1), 0 18px 48px rgba(0, 10, 13, 0.24);
+}
+.dark .admin-protected {
+  background: linear-gradient(135deg, rgba(18, 63, 61, 0.92), rgba(23, 59, 69, 0.84));
+  border-color: rgba(101, 214, 173, 0.28);
+}
+.dark .admin-inset {
+  background: rgba(16, 40, 51, 0.64);
+}

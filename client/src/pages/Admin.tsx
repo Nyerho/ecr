@@ -282,8 +282,8 @@ export default function Admin() {
     ];
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card/90 backdrop-blur-xl">
+    <main className="admin-shell min-h-screen bg-background text-foreground">
+      <header className="admin-header border-b border-border bg-card/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <BrandLogo className="w-20" imageClassName="rounded-xl" />
@@ -314,8 +314,8 @@ export default function Admin() {
         </div>
       </header>
       <div className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8">
-        <aside className="space-y-2">
-          <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+        <aside className="admin-sidebar space-y-2">
+          <div className="admin-protected mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-emerald-800">
               <LockKeyhole size={14} /> Protected
             </div>
@@ -330,7 +330,7 @@ export default function Admin() {
               <button
                 key={item.key}
                 onClick={() => setTab(item.key)}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-black transition ${tab === item.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                className={`admin-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-black transition ${tab === item.key ? "admin-nav-active bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
               >
                 <Icon size={17} />
                 {item.label}
@@ -455,7 +455,7 @@ function Overview({
           return (
             <div
               key={card.label}
-              className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+              className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"
             >
               <span
                 className={`grid size-10 place-items-center rounded-xl ${card.tone}`}
@@ -473,7 +473,7 @@ function Overview({
         })}
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="eyebrow">Live queue</p>
@@ -519,7 +519,7 @@ function Overview({
             )}
           </div>
         </section>
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="eyebrow">Directory</p>
           <h2 className="section-title">Response organizations</h2>
           <div className="mt-4 space-y-3">
@@ -734,7 +734,7 @@ function IncidentDetail({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-2xl sm:p-7">
+      <section className="admin-modal max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">Incident details</p>
@@ -790,7 +790,7 @@ function IncidentDetail({
               )}
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+          <div className="admin-inset rounded-2xl border border-border bg-muted/30 p-4">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
               Update for reporter
             </p>
@@ -814,7 +814,7 @@ function IncidentDetail({
             </p>
           </div>
         </div>
-        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+        <div className="admin-inset mt-4 rounded-2xl border border-border bg-card p-4">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
             Report
           </p>
@@ -894,7 +894,7 @@ function IncidentDetail({
             </a>
           </div>
         </div>
-        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+        <div className="admin-inset mt-4 rounded-2xl border border-border bg-card p-4">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
             Live status timeline
           </p>
@@ -1112,7 +1112,7 @@ function DataPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <p className="eyebrow">{eyebrow}</p>
       <h2 className="section-title">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
