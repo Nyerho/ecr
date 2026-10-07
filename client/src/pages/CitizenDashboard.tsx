@@ -1394,7 +1394,7 @@ export default function Home() {
         <div className="fixed bottom-5 left-1/2 z-40 w-[min(92vw,34rem)] -translate-x-1/2 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-xl backdrop-blur">
           <p className="text-sm font-black text-slate-900">You have an unfinished report</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">Your draft is saved on this device. Resume it or discard it.</p>
-          <div className="mt-3 flex gap-2"><Button onClick={resumeSavedReport} className="flex-1 rounded-xl bg-[#063f3d] text-xs">Resume draft</Button><Button onClick={discardSavedReport} variant="outline" className="rounded-xl text-xs">Discard</Button></div>
+          <div className="mt-3 flex gap-2"><Button onClick={resumeSavedReport} className="flex-1 rounded-xl bg-[#13b981] text-xs font-black text-[#022c2b] shadow-[0_8px_20px_rgba(19,185,129,0.24)] hover:bg-[#34d399]">Resume draft</Button><Button onClick={discardSavedReport} variant="outline" className="rounded-xl text-xs">Discard</Button></div>
         </div>
       )}
       {reportOpen && (
@@ -1523,32 +1523,38 @@ export default function Home() {
                     />
                   </label>
                 </div>
-                <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-                  <div className="flex items-center gap-2 text-sm font-black text-cyan-950">
-                    <Phone size={16} /> How can responders reach you?
+                <section className="glass-surface rounded-3xl p-4 sm:p-5" aria-labelledby="contact-heading">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex gap-3">
+                      <span className="icon-orb grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                        <Phone size={19} />
+                      </span>
+                      <div>
+                        <p id="contact-heading" className="text-base font-black text-slate-950 dark:text-emerald-50">
+                          How can responders reach you?
+                        </p>
+                        <p className="mt-1 max-w-xl text-xs leading-5 text-slate-600 dark:text-slate-300">
+                          Add one safe contact method so an authorized response team can follow up. These details stay private to ECR responders.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-200">
+                      <ShieldCheck size={13} /> Private
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-cyan-900/70">
-                    Add a phone number or email. ECR shares it only with
-                    authorized response teams.
-                  </p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <label className="sm:col-span-2">
-                      <span className="sr-only">Your name</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Name <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterName}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterName: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterName: event.target.value }))}
                         maxLength={120}
-                        placeholder="Your name (optional)"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Your name"
+                        className="w-full rounded-xl border border-slate-200 bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </label>
                     <label>
-                      <span className="sr-only">Phone number</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Phone <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterPhone}
                         onChange={event => setForm(current => ({ ...current, reporterPhone: event.target.value.replace(/\D/g, "").slice(0, 11) }))}
@@ -1557,29 +1563,24 @@ export default function Home() {
                         maxLength={11}
                         pattern="0[0-9]{10}"
                         aria-invalid={Boolean(phoneValue && !phoneIsValid)}
-                        placeholder="Phone number (08012345678)"
-                        className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500 ${phoneValue && !phoneIsValid ? "border-rose-400 focus:ring-rose-200" : "border-cyan-100"}`}
+                        placeholder="08012345678"
+                        className={`w-full rounded-xl border bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500 ${phoneValue && !phoneIsValid ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-emerald-500 dark:border-slate-600"}`}
                       />
-                      {phoneValue && !phoneIsValid && <span className="mt-1 block text-xs font-semibold text-rose-700">Use exactly 11 digits, starting with 0.</span>}
+                      {phoneValue && !phoneIsValid && <span className="mt-1.5 block text-xs font-semibold text-rose-700 dark:text-rose-300">Use exactly 11 digits, starting with 0.</span>}
                     </label>
                     <label>
-                      <span className="sr-only">Email address</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Email <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterEmail}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterEmail: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterEmail: event.target.value }))}
                         type="email"
                         maxLength={320}
-                        placeholder="Email address"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="you@example.com"
+                        className="w-full rounded-xl border border-slate-200 bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </label>
                   </div>
-                </div>
+                </section>
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
                   <Button
                     variant="outline"

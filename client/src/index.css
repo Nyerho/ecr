@@ -316,9 +316,9 @@ button:hover .icon-orb {
 .dark {
   color-scheme: dark;
   --background: #0b1f26;
-  --foreground: #dceee9;
-  --card: #112d36;
-  --card-foreground: #dceee9;
+  --foreground: #e5f6f1;
+  --card: #173b45;
+  --card-foreground: #e5f6f1;
   --border: #28505a;
   --input: #28505a;
   --primary: #65d6ad;
@@ -328,7 +328,7 @@ button:hover .icon-orb {
 .dark body,
 .dark #root {
   background: #0b1f26;
-  color: #dceee9;
+  color: #e5f6f1;
 }
 .dark .bg-white,
 .dark .bg-white\/80,
@@ -337,18 +337,18 @@ button:hover .icon-orb {
 .dark .bg-white\/95,
 .dark .bg-slate-50,
 .dark .bg-\[\#f4faf8\]\/95 {
-  background-color: #112d36;
+  background-color: #173b45;
 }
 .dark .text-slate-950,
 .dark .text-slate-900,
 .dark .text-slate-800,
 .dark .text-slate-700 {
-  color: #dceee9;
+  color: #e5f6f1;
 }
 .dark .text-slate-600,
 .dark .text-slate-500,
 .dark .text-slate-400 {
-  color: #a8c3c0;
+  color: #b9d5d1;
 }
 .dark .border-slate-200,
 .dark .border-slate-200\/80,
@@ -358,13 +358,20 @@ button:hover .icon-orb {
 .dark .bg-\[\#f5f8f7\] {
   background-color: #0b1f26;
 }
+.dark .bg-cyan-50\/60 {
+  background-color: #163b45;
+  border-color: #2d6570;
+}
+.dark .bg-slate-50 {
+  background-color: #173b45;
+}
 .dark .operations-surface {
-  background: linear-gradient(180deg, #112d36, #0b1f26);
+  background: linear-gradient(180deg, #173b45, #0b1f26);
 }
 .dark .glass-card,
 .dark .glass-tile,
 .dark .glass-surface {
-  background: rgba(17, 45, 54, 0.64);
+  background: rgba(23, 59, 69, 0.78);
   border-color: rgba(155, 224, 207, 0.2);
   box-shadow:
     inset 0 1px 0 rgba(224, 255, 246, 0.12),
@@ -391,13 +398,13 @@ button:hover .icon-orb {
   .dark .glass-surface,
   .dark .glass-pill,
   .dark .glass-icon-button {
-    background-color: #112d36;
+    background-color: #173b45;
   }
 }
 .dark input,
 .dark textarea,
 .dark select {
-  color: #dceee9;
+  color: #e5f6f1;
   background-color: #102833;
   border-color: #28505a;
 }
@@ -406,7 +413,7 @@ button:hover .icon-orb {
   color: #83a5a2;
 }
 .dark .bg-cyan-50\/70 {
-  background-color: rgba(20, 75, 82, 0.72);
+  background-color: #1a4650;
 }
 .dark .text-cyan-950,
 .dark .text-cyan-900 {
