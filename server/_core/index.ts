@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { registerTrustedIncidentRoutes } from "../trustedIncidentRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -63,6 +64,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "64kb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerTrustedIncidentRoutes(app);
   app.use("/api/trpc", (req, res, next) => {
     const now = Date.now();
     const key = (req.header("x-forwarded-for") || req.ip || "unknown").split(",")[0].trim();
