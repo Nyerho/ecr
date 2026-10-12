@@ -12,7 +12,7 @@ import {
   transitionTrustedIncident,
 } from "./trustedIncidentCommands";
 import { previewRetention } from "./retentionCommands";
-import { createTrustedMediaIntent, listTrustedIncidentMedia } from "./mediaCommands";
+import { completeTrustedMediaUpload, createTrustedMediaDownloadUrl, createTrustedMediaIntent, createTrustedMediaUploadUrl, listTrustedIncidentMedia } from "./mediaCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -166,6 +166,36 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json({ media: await listTrustedIncidentMedia(principal, req.params.incidentId) });
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/incident-media/:mediaId/upload-url", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await createTrustedMediaUploadUrl(principal, req.params.mediaId));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/incident-media/:mediaId/complete", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await completeTrustedMediaUpload(principal, req.params.mediaId));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.get("/api/v1/incident-media/:mediaId/download-url", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await createTrustedMediaDownloadUrl(principal, req.params.mediaId));
     } catch (error) {
       sendCommandError(res, error);
     }

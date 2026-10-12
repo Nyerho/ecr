@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseFirestore } from "./_core/firebaseAdmin";
 import { CommandError, type CommandPrincipal } from "./trustedIncidentCommands";
+import { assertPrivateMediaObject, createPrivateMediaDownloadUrl, createPrivateMediaUploadUrl, isPrivateMediaConfigured, readPrivateMediaObject, scanPrivateMedia } from "./privateMediaStorage";
 
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const allowedKinds = new Set(["scene", "missing_person"]);
@@ -65,4 +66,63 @@ export async function listTrustedIncidentMedia(principal: CommandPrincipal, inci
   const snapshot = await database.collection("incidentMedia").where("incidentId", "==", incidentSnapshot.id).limit(20).get();
   await database.collection("auditEvents").add({ action: "sensitive_read.incident_media", actorUid: principal.uid, resourceType: "incident", resourceId: incidentSnapshot.id, result: "success", metadata: { returnedCount: snapshot.size }, createdAt: FieldValue.serverTimestamp() });
   return snapshot.docs.map(document => { const data = document.data(); return { id: document.id, incidentId: data.incidentId, status: data.status, mimeType: data.mimeType, byteSize: data.byteSize, kind: data.kind, createdAt: data.createdAt ?? null }; });
+}
+
+export async function createTrustedMediaUploadUrl(principal: CommandPrincipal, mediaId: string) {
+  if (!isPrivateMediaConfigured()) throw new CommandError("UNAVAILABLE", "Private media storage is not configured.");
+  const database = getFirebaseFirestore();
+  const mediaRef = database.collection("incidentMedia").doc(requiredText(mediaId, "mediaId", 128));
+  const mediaSnapshot = await mediaRef.get();
+  if (!mediaSnapshot.exists) throw new CommandError("NOT_FOUND", "Media intent not found.");
+  const media = mediaSnapshot.data() ?? {};
+  const incidentSnapshot = await database.collection("incidents").doc(String(media.incidentId)).get();
+  if (!incidentSnapshot.exists) throw new CommandError("NOT_FOUND", "Incident not found.");
+  requireAccess(principal, incidentSnapshot.data() ?? {});
+  if (media.status !== "pending_upload") throw new CommandError("CONFLICT", "This media intent is no longer uploadable.");
+  const uploadUrl = await createPrivateMediaUploadUrl({ storagePath: String(media.storagePath), mimeType: String(media.mimeType), byteSize: Number(media.byteSize) });
+  return { mediaId: mediaSnapshot.id, uploadUrl, expiresInSeconds: 600, status: media.status };
+}
+
+export async function completeTrustedMediaUpload(principal: CommandPrincipal, mediaId: string) {
+  if (!isPrivateMediaConfigured()) throw new CommandError("UNAVAILABLE", "Private media storage is not configured.");
+  const database = getFirebaseFirestore();
+  const mediaRef = database.collection("incidentMedia").doc(requiredText(mediaId, "mediaId", 128));
+  const mediaSnapshot = await mediaRef.get();
+  if (!mediaSnapshot.exists) throw new CommandError("NOT_FOUND", "Media intent not found.");
+  const media = mediaSnapshot.data() ?? {};
+  const incidentSnapshot = await database.collection("incidents").doc(String(media.incidentId)).get();
+  if (!incidentSnapshot.exists) throw new CommandError("NOT_FOUND", "Incident not found.");
+  requireAccess(principal, incidentSnapshot.data() ?? {});
+  if (media.status !== "pending_upload") return { mediaId: mediaSnapshot.id, status: media.status, replayed: true };
+  try {
+    await assertPrivateMediaObject(String(media.storagePath), { mimeType: String(media.mimeType), byteSize: Number(media.byteSize) });
+    const object = await readPrivateMediaObject(String(media.storagePath));
+    const scan = await scanPrivateMedia(object.bytes, String(media.mimeType));
+    if (!scan.clean) {
+      await mediaRef.update({ status: "rejected", scanStatus: "infected", scanThreat: scan.threat, updatedAt: FieldValue.serverTimestamp() });
+      throw new CommandError("INVALID_ARGUMENT", "The uploaded media failed malware scanning.");
+    }
+    await mediaRef.update({ status: "available", scanStatus: "clean", uploadedAt: FieldValue.serverTimestamp(), etag: object.etag, updatedAt: FieldValue.serverTimestamp() });
+    await database.collection("auditEvents").add({ action: "incident.media_scanned", actorUid: principal.uid, resourceType: "incidentMedia", resourceId: mediaSnapshot.id, result: "success", metadata: { incidentId: media.incidentId, scanStatus: "clean" }, createdAt: FieldValue.serverTimestamp() });
+    return { mediaId: mediaSnapshot.id, status: "available", scanStatus: "clean", replayed: false };
+  } catch (error) {
+    if (error instanceof CommandError) throw error;
+    await mediaRef.update({ status: "scan_failed", scanStatus: "unavailable", updatedAt: FieldValue.serverTimestamp() });
+    throw new CommandError("UNAVAILABLE", "Media could not be verified and remains unavailable.");
+  }
+}
+
+export async function createTrustedMediaDownloadUrl(principal: CommandPrincipal, mediaId: string) {
+  if (!isPrivateMediaConfigured()) throw new CommandError("UNAVAILABLE", "Private media storage is not configured.");
+  const database = getFirebaseFirestore();
+  const mediaSnapshot = await database.collection("incidentMedia").doc(requiredText(mediaId, "mediaId", 128)).get();
+  if (!mediaSnapshot.exists) throw new CommandError("NOT_FOUND", "Media not found.");
+  const media = mediaSnapshot.data() ?? {};
+  const incidentSnapshot = await database.collection("incidents").doc(String(media.incidentId)).get();
+  if (!incidentSnapshot.exists) throw new CommandError("NOT_FOUND", "Incident not found.");
+  requireAccess(principal, incidentSnapshot.data() ?? {});
+  if (media.status !== "available" || media.scanStatus !== "clean") throw new CommandError("UNAVAILABLE", "Media is not available for download.");
+  const url = await createPrivateMediaDownloadUrl(String(media.storagePath), String(media.mimeType));
+  await database.collection("auditEvents").add({ action: "sensitive_read.incident_media_download", actorUid: principal.uid, resourceType: "incidentMedia", resourceId: mediaSnapshot.id, result: "success", createdAt: FieldValue.serverTimestamp() });
+  return { mediaId: mediaSnapshot.id, url, expiresInSeconds: 300 };
 }
