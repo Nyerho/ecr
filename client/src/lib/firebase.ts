@@ -180,6 +180,33 @@ export async function createReportIncident(input: Parameters<typeof createFirest
   }
   return result as { id: string; publicReference: string; replayed?: boolean };
 }
+
+export async function transitionReportIncident(input: {
+  incidentId: string;
+  nextStatus: string;
+  expectedVersion: number;
+}) {
+  if (!trustedCommandsEnabled) return null;
+  const user = requireAuth().currentUser;
+  if (!user) throw new Error("Sign in again before updating an incident.");
+  if (!trustedApiBaseUrl) {
+    throw new Error("The trusted incident API is enabled but VITE_ECR_TRUSTED_API_URL is missing.");
+  }
+  const token = await user.getIdToken();
+  const response = await fetch(`${trustedApiBaseUrl}/api/v1/incidents/${encodeURIComponent(input.incidentId)}/transition`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ...input, commandKey: `web-transition-${crypto.randomUUID()}` }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(result.error || "The trusted incident service rejected the update.") as Error & { code?: string; status?: number };
+    error.code = result.code;
+    error.status = response.status;
+    throw error;
+  }
+  return result as { id: string; status: string; version: number; replayed?: boolean };
+}
 export function sendFirebaseVerificationEmail(user: FirebaseUser) {
   return sendEmailVerification(user);
 }

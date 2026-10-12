@@ -34,6 +34,8 @@ When the flag is `false`—the default—the existing Firebase batch path remain
 
 The mobile client remains on the existing path until the same backend endpoint is configured for Expo Go and mobile integration tests are available.
 
+Admin status changes now use `POST /api/v1/incidents/:incidentId/transition` when the trusted-command flag is enabled. The command supplies the current incident version and is rejected by the backend if the status transition is invalid or the record changed since it was loaded. With the flag disabled, the existing Firestore update path remains available as a temporary migration fallback.
+
 ## Required server configuration
 
 The trusted backend requires:

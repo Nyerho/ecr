@@ -28,9 +28,11 @@ import CommunityChat from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import {
   firebaseConfigured,
+  trustedCommandsEnabled,
   ensurePublicTrackingRecord,
   subscribeToAdminCollection,
   updateFirestoreIncident,
+  transitionReportIncident,
   updateFirestoreUserRole,
   createFirestoreOrganization,
   createEmergencyContact,
@@ -343,21 +345,29 @@ export default function Admin() {
   ) {
     if (!user || incident.status === status) return;
     try {
-      await updateFirestoreIncident(
-        incident.id,
-        { status },
-        user.uid,
-        incident.version,
-        incident.status,
-        incident.publicReference
-      );
-      await writeFirestoreAudit({
-        actorUid: user.uid,
-        action: "incident.status_updated",
-        resourceType: "incident",
-        resourceId: incident.id,
-        metadata: { previousStatus: incident.status, status },
-      });
+      if (trustedCommandsEnabled) {
+        await transitionReportIncident({
+          incidentId: incident.id,
+          nextStatus: status,
+          expectedVersion: incident.version,
+        });
+      } else {
+        await updateFirestoreIncident(
+          incident.id,
+          { status },
+          user.uid,
+          incident.version,
+          incident.status,
+          incident.publicReference
+        );
+        await writeFirestoreAudit({
+          actorUid: user.uid,
+          action: "incident.status_updated",
+          resourceType: "incident",
+          resourceId: incident.id,
+          metadata: { previousStatus: incident.status, status },
+        });
+      }
       toast.success(
         `${incident.publicReference} is now ${status.replaceAll("_", " ")}`
       );
