@@ -14,6 +14,7 @@ import {
 import { previewRetention } from "./retentionCommands";
 import { completeTrustedMediaUpload, createTrustedMediaDownloadUrl, createTrustedMediaIntent, createTrustedMediaUploadUrl, listTrustedIncidentMedia } from "./mediaCommands";
 import { processPrivateMediaRetention } from "./mediaRetentionCommands";
+import { revokeUserSessions } from "./securityCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -148,6 +149,26 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json(await processPrivateMediaRetention(principal, req.body?.execute === true));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/security/me/revoke-sessions", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await revokeUserSessions(principal, principal.uid));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/security/users/:uid/revoke-sessions", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await revokeUserSessions(principal, req.params.uid));
     } catch (error) {
       sendCommandError(res, error);
     }

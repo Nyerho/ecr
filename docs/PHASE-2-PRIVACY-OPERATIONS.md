@@ -67,6 +67,8 @@ The actual object-storage upload, malware/integrity scan, signed download URL, a
 
 The trusted backend currently verifies Firebase ID tokens, checks revoked sessions, enforces role and organization membership, redacts the operations queue, records each authorized operations-queue read as a restricted `sensitive_read.operations_queue` audit event, uses transactional state changes, records audit events, applies request-size limits, adds security headers, and rate-limits the tRPC compatibility surface.
 
+Authenticated users can revoke their own refresh tokens through `POST /api/v1/security/me/revoke-sessions`. An administrator can revoke another account through `POST /api/v1/security/users/{uid}/revoke-sessions`. Both actions update the user security timestamp and create an audit event. Every subsequent trusted API authentication verifies Firebase tokens with revocation checks enabled.
+
 Remaining Phase 2 gates include:
 
 - MFA or equivalent stronger authentication for institutional accounts;
