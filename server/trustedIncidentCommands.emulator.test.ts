@@ -129,4 +129,47 @@ describe.skipIf(!enabled)("trusted Firebase commands against emulators", () => {
     expect(membership).toMatchObject({ uid: responder.localId, organizationId: "org-ughelli", role: "responder", active: true });
     expect(responderPrincipal.memberships).toEqual([expect.objectContaining({ organizationId: "org-ughelli", role: "responder" })]);
   });
+
+  it("offers an assignment and lets only the scoped responder accept it", async () => {
+    const admin = await createEmulatorUser("assignment-admin@example.test");
+    await firestore.collection("admins").doc(admin.localId).set({ active: true });
+    const adminPrincipal = await commands.authenticateBearerToken(`Bearer ${admin.idToken}`);
+    const responder = await createEmulatorUser("assignment-responder@example.test");
+    await commands.upsertOrganizationMembership({
+      principal: adminPrincipal,
+      uid: responder.localId,
+      organizationId: "org-assignment",
+      role: "responder",
+    });
+    const citizen = await createEmulatorUser("assignment-citizen@example.test");
+    const citizenPrincipal = await commands.authenticateBearerToken(`Bearer ${citizen.idToken}`);
+    const incident = await commands.createTrustedIncident({
+      principal: citizenPrincipal,
+      category: "rescue",
+      description: "A person is trapped and needs rescue assistance.",
+      reporterEmail: "assignment-citizen@example.test",
+      commandKey: "create-assignment-001",
+    });
+    const assignment = await commands.assignTrustedIncident({
+      principal: adminPrincipal,
+      incidentId: incident.id,
+      responderUid: responder.localId,
+      organizationId: "org-assignment",
+      commandKey: "assign-responder-001",
+    });
+    const responderPrincipal = await commands.authenticateBearerToken(`Bearer ${responder.idToken}`);
+    const accepted = await commands.respondToTrustedAssignment({
+      principal: responderPrincipal,
+      assignmentId: assignment.id,
+      decision: "accept",
+      commandKey: "accept-assignment-001",
+    });
+    const incidentSnapshot = await firestore.collection("incidents").doc(incident.id).get();
+    const assignmentSnapshot = await firestore.collection("assignments").doc(assignment.id).get();
+
+    expect(assignment).toMatchObject({ incidentId: incident.id, status: "offered", version: 1 });
+    expect(accepted).toMatchObject({ status: "accepted", version: 2, replayed: false });
+    expect(incidentSnapshot.data()).toMatchObject({ status: "responding", assignedOrganizationId: "org-assignment", assignedResponderUid: responder.localId });
+    expect(assignmentSnapshot.data()).toMatchObject({ status: "accepted", decision: "accept", version: 2 });
+  });
 });

@@ -1,10 +1,12 @@
 import type { Express, Request, Response } from "express";
 import {
   authenticateBearerToken,
+  assignTrustedIncident,
   CommandError,
   createTrustedIncident,
   listTrustedOperations,
   upsertOrganizationMembership,
+  respondToTrustedAssignment,
   transitionTrustedIncident,
 } from "./trustedIncidentCommands";
 
@@ -47,6 +49,41 @@ export function registerTrustedIncidentRoutes(app: Express) {
         incidentId: req.params.incidentId,
         nextStatus: req.body?.nextStatus,
         expectedVersion: req.body?.expectedVersion,
+        commandKey: req.body?.commandKey,
+        note: req.body?.note,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/incidents/:incidentId/assign", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      const result = await assignTrustedIncident({
+        principal,
+        incidentId: req.params.incidentId,
+        responderUid: req.body?.responderUid,
+        organizationId: req.body?.organizationId,
+        commandKey: req.body?.commandKey,
+        note: req.body?.note,
+      });
+      res.status(result.replayed ? 200 : 201).json(result);
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/assignments/:assignmentId/respond", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      const result = await respondToTrustedAssignment({
+        principal,
+        assignmentId: req.params.assignmentId,
+        decision: req.body?.decision,
         commandKey: req.body?.commandKey,
         note: req.body?.note,
       });

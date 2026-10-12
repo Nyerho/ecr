@@ -10,6 +10,8 @@ The Express server exposes:
 
 - `POST /api/v1/incidents`
 - `POST /api/v1/incidents/:incidentId/transition`
+- `POST /api/v1/incidents/:incidentId/assign`
+- `POST /api/v1/assignments/:assignmentId/respond`
 - `GET /api/v1/operations/queue`
 - `POST /api/v1/organizations/:organizationId/memberships`
 
@@ -35,6 +37,8 @@ When the flag is `false`—the default—the existing Firebase batch path remain
 The mobile client remains on the existing path until the same backend endpoint is configured for Expo Go and mobile integration tests are available.
 
 Admin status changes now use `POST /api/v1/incidents/:incidentId/transition` when the trusted-command flag is enabled. The command supplies the current incident version and is rejected by the backend if the status transition is invalid or the record changed since it was loaded. With the flag disabled, the existing Firestore update path remains available as a temporary migration fallback.
+
+Assignment commands now create an auditable `assignments` record transactionally, require the responder to hold an active membership in the selected organization, and move the incident to `assigned`. Only the assigned responder can respond. Accepting moves the incident to `responding`; declining moves it to `escalated` for fallback routing. Direct client writes to `assignments` are blocked by Firestore rules.
 
 ## Required server configuration
 
