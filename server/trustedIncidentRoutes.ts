@@ -4,7 +4,9 @@ import {
   assignTrustedIncident,
   CommandError,
   createTrustedIncident,
+  expireStaleAssignments,
   listTrustedOperations,
+  recordNotificationDelivery,
   upsertOrganizationMembership,
   respondToTrustedAssignment,
   transitionTrustedIncident,
@@ -98,6 +100,31 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json({ incidents: await listTrustedOperations(principal) });
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/operations/expire-assignments", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await expireStaleAssignments(principal, req.body?.staleAfterMinutes));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/notifications/:deliveryId/outcome", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await recordNotificationDelivery({
+        principal,
+        deliveryId: req.params.deliveryId,
+        status: req.body?.status,
+        errorMessage: req.body?.errorMessage,
+      }));
     } catch (error) {
       sendCommandError(res, error);
     }

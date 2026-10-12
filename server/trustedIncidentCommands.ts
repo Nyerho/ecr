@@ -459,6 +459,17 @@ export async function assignTrustedIncident(input: {
       metadata: { incidentId: snapshot.id, responderUid, organizationId },
       createdAt: FieldValue.serverTimestamp(),
     });
+    transaction.create(database.collection("notificationDeliveries").doc(), {
+      type: "assignment_offer",
+      incidentId: snapshot.id,
+      assignmentId: assignmentRef.id,
+      recipientUid: responderUid,
+      status: "queued",
+      attempts: 0,
+      maxAttempts: 3,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
     transaction.create(idempotencyRef, {
       command: "incident.assign",
       commandKey,
@@ -524,8 +535,64 @@ export async function respondToTrustedAssignment(input: {
   });
 }
 
+export async function expireStaleAssignments(principal: CommandPrincipal, staleAfterMinutes = 10) {
+  requireOperationalPrincipal(principal);
+  const database = getFirebaseFirestore();
+  const cutoff = Date.now() - staleAfterMinutes * 60_000;
+  const snapshot = await database.collection("assignments").where("status", "==", "offered").limit(100).get();
+  let expired = 0;
+  for (const assignmentSnapshot of snapshot.docs) {
+    const assignment = assignmentSnapshot.data();
+    const createdAt = assignment.createdAt?.toDate?.()?.getTime?.() ?? 0;
+    if (!createdAt || createdAt > cutoff) continue;
+    const incidentRef = database.collection("incidents").doc(String(assignment.incidentId));
+    await database.runTransaction(async transaction => {
+      const currentAssignment = await transaction.get(assignmentSnapshot.ref);
+      if (!currentAssignment.exists || currentAssignment.data()?.status !== "offered") return;
+      const incidentSnapshot = await transaction.get(incidentRef);
+      const incident = incidentSnapshot.data() ?? {};
+      transaction.update(assignmentSnapshot.ref, { status: "expired", version: 2, expiredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      if (incidentSnapshot.exists && incident.status === "assigned") {
+        const event = { label: "Responder assignment expired", actorUid: principal.uid, previousValue: "assigned", newValue: "escalated", createdAt: new Date().toISOString() };
+        transaction.update(incidentRef, { status: "escalated", version: Number(incident.version ?? 1) + 1, events: FieldValue.arrayUnion(event), updatedAt: FieldValue.serverTimestamp() });
+        transaction.set(database.collection("publicTracking").doc(String(incident.publicReference)), safeTrackingProjection({ ...incident, status: "escalated", events: [...(Array.isArray(incident.events) ? incident.events : []), event] }), { merge: true });
+      }
+      transaction.create(database.collection("incidentEvents").doc(), { incidentId: assignment.incidentId, type: "assignment_expired", assignmentId: assignmentSnapshot.id, actorUid: principal.uid, createdAt: FieldValue.serverTimestamp() });
+      transaction.create(database.collection("auditEvents").doc(), { action: "incident.assignment_expired", actorUid: principal.uid, resourceType: "assignment", resourceId: assignmentSnapshot.id, result: "success", createdAt: FieldValue.serverTimestamp() });
+      transaction.create(database.collection("notificationDeliveries").doc(), { type: "assignment_escalated", incidentId: assignment.incidentId, assignmentId: assignmentSnapshot.id, recipientUid: assignment.offeredBy, status: "queued", attempts: 0, maxAttempts: 3, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      expired += 1;
+    });
+  }
+  return { expired };
+}
+
+export async function recordNotificationDelivery(input: { principal: CommandPrincipal; deliveryId: string; status: unknown; errorMessage?: unknown }) {
+  if (input.principal.role !== "admin") throw new CommandError("FORBIDDEN", "Only an ECR administrator can record delivery outcomes.");
+  if (input.status !== "delivered" && input.status !== "failed") throw new CommandError("INVALID_ARGUMENT", "Delivery status must be delivered or failed.");
+  const database = getFirebaseFirestore();
+  const deliveryRef = database.collection("notificationDeliveries").doc(input.deliveryId);
+  const deadLetterRef = database.collection("notificationDeadLetters").doc(input.deliveryId);
+  return database.runTransaction(async transaction => {
+    const snapshot = await transaction.get(deliveryRef);
+    if (!snapshot.exists) throw new CommandError("NOT_FOUND", "Notification delivery not found.");
+    const delivery = snapshot.data() ?? {};
+    if (["delivered", "dead_letter"].includes(String(delivery.status))) return { status: delivery.status, attempts: delivery.attempts ?? 0, replayed: true };
+    const attempts = Number(delivery.attempts ?? 0) + 1;
+    if (input.status === "delivered") {
+      transaction.update(deliveryRef, { status: "delivered", attempts, deliveredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      return { status: "delivered", attempts, replayed: false };
+    }
+    const maxAttempts = Number(delivery.maxAttempts ?? 3);
+    const deadLetter = attempts >= maxAttempts;
+    transaction.update(deliveryRef, { status: deadLetter ? "dead_letter" : "queued", attempts, lastError: optionalText(input.errorMessage, 500, "errorMessage"), updatedAt: FieldValue.serverTimestamp() });
+    if (deadLetter) transaction.create(deadLetterRef, { ...delivery, deliveryId: snapshot.id, attempts, reason: input.errorMessage ?? "delivery_failed", createdAt: FieldValue.serverTimestamp() });
+    return { status: deadLetter ? "dead_letter" : "queued", attempts, replayed: false };
+  });
+}
+
 export async function listTrustedOperations(principal: CommandPrincipal) {
   requireOperationalPrincipal(principal);
+  await expireStaleAssignments(principal);
   const database = getFirebaseFirestore();
   let query = database.collection("incidents").orderBy("createdAt", "desc").limit(100);
   if (principal.role !== "admin" && principal.organizationId) {
