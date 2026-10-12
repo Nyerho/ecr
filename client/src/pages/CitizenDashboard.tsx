@@ -7,9 +7,17 @@ import {
   getNextLocalStatus,
   type LocalIncident,
 } from "@/lib/localIncidents";
+import {
+  isRetryableReportError,
+  loadPendingReports,
+  queuePendingReport,
+  removePendingReport,
+  updatePendingReport,
+  type PendingReport,
+} from "@/lib/localOfflineReports";
 import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
 import {
-  createFirestoreIncident,
+  createReportIncident,
   ensureAnonymousFirebaseUser,
   firebaseConfigured,
   reportSubmissionMessage,
@@ -18,6 +26,7 @@ import {
 } from "@/lib/firebase";
 import BrandLogo from "@/components/BrandLogo";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
+import DiagnosticsPanel from "@/components/DiagnosticsPanel";
 import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
@@ -280,6 +289,10 @@ function emptyForm(): ReportForm {
   };
 }
 
+function isValidNigerianPhone(value: string) {
+  return /^0\d{10}$/.test(value.trim());
+}
+
 function formatTime(value: Date | string) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
@@ -344,6 +357,7 @@ export default function Home() {
   const [localLifecycleMessage, setLocalLifecycleMessage] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReceipt, setReportReceipt] = useState<{
@@ -359,6 +373,8 @@ export default function Home() {
   );
   const [form, setForm] = useState<ReportForm>(emptyForm);
   const [photoDrafts, setPhotoDrafts] = useState<IncidentPhotoDraft[]>([]);
+  const [savedReportDraft, setSavedReportDraft] = useState<{ reportStep: "category" | "details" | "location" | "review"; selectedCategory: CategoryKey | null; form: ReportForm } | null>(null);
+  const [pendingReports, setPendingReports] = useState<PendingReport[]>([]);
   const [view, setView] = useState<"citizen" | "operations">("citizen");
   const [adminPromptOpen, setAdminPromptOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -366,6 +382,8 @@ export default function Home() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
+  const previousReportStatuses = useRef<Record<string, string>>({});
+  const reportDraftStorageKey = "ecr-report-draft";
 
   const isAdmin = user?.role === "admin";
   const adminStatus = trpc.admin.status.useQuery(undefined, {
@@ -438,12 +456,53 @@ export default function Home() {
     () => categories.find(item => item.key === selectedCategory),
     [selectedCategory]
   );
+  const phoneValue = form.reporterPhone.trim();
+  const phoneIsValid = !phoneValue || isValidNigerianPhone(phoneValue);
   const canAdvanceDetails = Boolean(
     selectedCategory &&
       form.description.trim().length >= 4 &&
-      (form.reporterPhone.trim() || form.reporterEmail.trim())
+      (form.reporterPhone.trim() || form.reporterEmail.trim()) &&
+      phoneIsValid
   );
   const canAdvanceLocation = true;
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(reportDraftStorageKey);
+      if (raw) setSavedReportDraft(JSON.parse(raw));
+    } catch {
+      setSavedReportDraft(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    setPendingReports(loadPendingReports());
+    const refresh = () => setPendingReports(loadPendingReports());
+    window.addEventListener("online", refresh);
+    return () => window.removeEventListener("online", refresh);
+  }, []);
+
+  useEffect(() => {
+    if (!reportOpen || (!selectedCategory && !form.description && !form.locationLabel)) return;
+    try {
+      window.localStorage.setItem(reportDraftStorageKey, JSON.stringify({ reportStep, selectedCategory, form }));
+      setSavedReportDraft({ reportStep, selectedCategory, form });
+    } catch {
+      // Draft persistence is best-effort; the user can continue normally.
+    }
+  }, [reportOpen, reportStep, selectedCategory, form]);
+
+  useEffect(() => {
+    if (!reportOpen) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (form.description.trim() || form.locationLabel.trim()) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [reportOpen, form.description, form.locationLabel]);
 
   useEffect(() => {
     if (!user || !firebaseConfigured) {
@@ -456,6 +515,18 @@ export default function Home() {
       )
     );
   }, [user]);
+
+  useEffect(() => {
+    if (!localIncidents.length) return;
+    const previous = previousReportStatuses.current;
+    localIncidents.forEach(incident => {
+      const oldStatus = previous[incident.publicReference];
+      if (oldStatus && oldStatus !== incident.status) {
+        toast.info(`${incident.publicReference}: ${statusLabels[incident.status as Status] ?? incident.status}`);
+      }
+      previous[incident.publicReference] = incident.status;
+    });
+  }, [localIncidents]);
 
   useEffect(() => {
     if (!operations.data) return;
@@ -481,6 +552,19 @@ export default function Home() {
     setLocationMessage("");
     setReportOpen(true);
     setReportStep("category");
+  }
+
+  function resumeSavedReport() {
+    if (!savedReportDraft) return;
+    setSelectedCategory(savedReportDraft.selectedCategory);
+    setForm(savedReportDraft.form);
+    setReportStep(savedReportDraft.reportStep);
+    setReportOpen(true);
+  }
+
+  function discardSavedReport() {
+    window.localStorage.removeItem(reportDraftStorageKey);
+    setSavedReportDraft(null);
   }
 
   function startReportWithCategory(categoryKey: CategoryKey) {
@@ -537,19 +621,26 @@ export default function Home() {
 
   async function submitReport() {
     if (!selectedCategory || !canAdvanceDetails || !canAdvanceLocation) return;
+    if (phoneValue && !phoneIsValid) {
+      toast.error("Enter an 11-digit Nigerian phone number starting with 0.");
+      return;
+    }
     setIsSubmittingLocal(true);
+    const payload = {
+      category: selectedCategory,
+      description: form.description.trim(),
+      reporterName: form.reporterName.trim() || undefined,
+      locationLabel: form.locationLabel.trim() || undefined,
+      latitude: form.latitude || undefined,
+      longitude: form.longitude || undefined,
+      reporterPhone: form.reporterPhone.trim() || undefined,
+      reporterEmail: form.reporterEmail.trim() || undefined,
+    };
     try {
       const reporter = user ?? (await ensureAnonymousFirebaseUser());
-      const result = await createFirestoreIncident({
+      const result = await createReportIncident({
         reporterUid: reporter.uid,
-        reporterName: form.reporterName.trim() || undefined,
-        category: selectedCategory,
-        description: form.description.trim(),
-        locationLabel: form.locationLabel.trim() || undefined,
-        latitude: form.latitude || undefined,
-        longitude: form.longitude || undefined,
-        reporterPhone: form.reporterPhone.trim() || undefined,
-        reporterEmail: form.reporterEmail.trim() || undefined,
+        ...payload,
       });
       setReportReceipt({
         reference: result.publicReference,
@@ -566,10 +657,42 @@ export default function Home() {
       setSelectedCategory(null);
       setForm(emptyForm());
       setPhotoDrafts([]);
+      window.localStorage.removeItem(reportDraftStorageKey);
+      setSavedReportDraft(null);
     } catch (error) {
-      toast.error(reportSubmissionMessage(error));
+      if (isRetryableReportError(error)) {
+        const pending = queuePendingReport(payload, reportSubmissionMessage(error));
+        setPendingReports(loadPendingReports());
+        setReportOpen(false);
+        toast.warning("No connection. Your report is saved on this device and can be retried when you are online.");
+        setReportStep("category");
+        setSelectedCategory(null);
+        setForm(emptyForm());
+        window.localStorage.removeItem(reportDraftStorageKey);
+        setSavedReportDraft(null);
+        void pending;
+      } else {
+        toast.error(reportSubmissionMessage(error));
+      }
     } finally {
       setIsSubmittingLocal(false);
+    }
+  }
+
+  async function retryPendingReport(pending: PendingReport) {
+    updatePendingReport(pending.id, { attempts: pending.attempts + 1, lastError: "Retrying…" });
+    setPendingReports(loadPendingReports());
+    try {
+      const reporter = user ?? (await ensureAnonymousFirebaseUser());
+      const result = await createReportIncident({ reporterUid: reporter.uid, ...pending });
+      removePendingReport(pending.id);
+      setPendingReports(loadPendingReports());
+      setReportReceipt({ reference: result.publicReference, location: pending.locationLabel || "Location shared privately" });
+      toast.success(`Queued report submitted (${result.publicReference})`);
+    } catch (error) {
+      updatePendingReport(pending.id, { lastError: reportSubmissionMessage(error) });
+      setPendingReports(loadPendingReports());
+      toast.error(isRetryableReportError(error) ? "Still offline. Your report remains safely queued." : reportSubmissionMessage(error));
     }
   }
 
@@ -607,10 +730,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_12px_40px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/55 shadow-[0_12px_40px_rgba(6,63,61,0.08)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <div className="hidden items-center gap-2 md:flex">
+            <button title="Optional troubleshooting check for network and service readiness" onClick={() => setDiagnosticsOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-800"><Activity size={14} />Connection check</button>
             {isAdmin && (
               <button
                 onClick={openControlCenter}
@@ -651,6 +775,7 @@ export default function Home() {
         </div>
         {showMenu && (
           <div className="border-t border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-xl md:hidden">
+            <button title="Optional troubleshooting check for network and service readiness" onClick={() => { setDiagnosticsOpen(true); setShowMenu(false); }} className="mb-2 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-bold"><Activity size={16} />Connection check <span className="ml-auto text-xs font-medium text-slate-500">Optional</span></button>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -1123,7 +1248,7 @@ export default function Home() {
 
       {adminPromptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-xl">
-          <div className="glass-card w-full max-w-md rounded-[2rem] border border-white/60 bg-white/90 p-6 shadow-2xl sm:p-8">
+          <div className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between">
               <div>
                 <span className="icon-orb grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
@@ -1199,7 +1324,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="receipt-title"
-            className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8"
+            className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8"
           >
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
               <CheckCircle2 size={28} />
@@ -1251,9 +1376,30 @@ export default function Home() {
           </section>
         </div>
       )}
+      {!reportOpen && pendingReports.length > 0 && (
+        <div className="fixed bottom-5 left-1/2 z-40 w-[min(92vw,34rem)] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50/95 p-4 shadow-xl backdrop-blur" role="status" aria-live="polite">
+          <p className="text-sm font-black text-amber-950">{pendingReports.length} report{pendingReports.length === 1 ? "" : "s"} waiting to upload</p>
+          <p className="mt-1 text-xs leading-5 text-amber-900/80">Your information is saved on this device. Retry only when you have a connection; it will not be shared until the upload is confirmed.</p>
+          <div className="mt-3 space-y-2">
+            {pendingReports.map(pending => (
+              <div key={pending.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 text-xs">
+                <span className="min-w-0 truncate font-semibold text-amber-950">{pending.category.replaceAll("_", " ")} · {new Date(pending.queuedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <Button onClick={() => retryPendingReport(pending)} variant="outline" className="shrink-0 rounded-lg border-amber-300 text-xs text-amber-900">Retry</Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!reportOpen && savedReportDraft && (
+        <div className="fixed bottom-5 left-1/2 z-40 w-[min(92vw,34rem)] -translate-x-1/2 rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-xl backdrop-blur">
+          <p className="text-sm font-black text-slate-900">You have an unfinished report</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Your draft is saved on this device. Resume it or discard it.</p>
+          <div className="mt-3 flex gap-2"><Button onClick={resumeSavedReport} className="flex-1 rounded-xl bg-[#13b981] text-xs font-black text-[#022c2b] shadow-[0_8px_20px_rgba(19,185,129,0.24)] hover:bg-[#34d399]">Resume draft</Button><Button onClick={discardSavedReport} variant="outline" className="rounded-xl text-xs">Discard</Button></div>
+        </div>
+      )}
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white/95 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
+          <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
             <div className="flex min-w-0 items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="break-words text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
@@ -1276,7 +1422,8 @@ export default function Home() {
                 <X size={20} />
               </button>
             </div>
-            <div className="mt-6 flex items-center gap-2">
+            <p className="mt-5 text-xs font-bold text-slate-500" aria-live="polite">Step { ["category", "details", "location", "review"].indexOf(reportStep) + 1 } of 4 · {reportStep === "category" ? "Choose emergency type" : reportStep === "details" ? "Describe what happened" : reportStep === "location" ? "Confirm location" : "Review before sending"}</p>
+            <div className="mt-3 flex items-center gap-2" aria-label={`Report progress: step ${["category", "details", "location", "review"].indexOf(reportStep) + 1} of 4`}>
               {["category", "details", "location", "review"].map(
                 (step, index) => (
                   <span
@@ -1376,65 +1523,64 @@ export default function Home() {
                     />
                   </label>
                 </div>
-                <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-                  <div className="flex items-center gap-2 text-sm font-black text-cyan-950">
-                    <Phone size={16} /> How can responders reach you?
+                <section className="glass-surface rounded-3xl p-4 sm:p-5" aria-labelledby="contact-heading">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex gap-3">
+                      <span className="icon-orb grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                        <Phone size={19} />
+                      </span>
+                      <div>
+                        <p id="contact-heading" className="text-base font-black text-slate-950 dark:text-emerald-50">
+                          How can responders reach you?
+                        </p>
+                        <p className="mt-1 max-w-xl text-xs leading-5 text-slate-600 dark:text-slate-300">
+                          Add one safe contact method so an authorized response team can follow up. These details stay private to ECR responders.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-200">
+                      <ShieldCheck size={13} /> Private
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-cyan-900/70">
-                    Add a phone number or email. ECR shares it only with
-                    authorized response teams.
-                  </p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <label className="sm:col-span-2">
-                      <span className="sr-only">Your name</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Name <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterName}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterName: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterName: event.target.value }))}
                         maxLength={120}
-                        placeholder="Your name (optional)"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Your name"
+                        className="w-full rounded-xl border border-slate-200 bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </label>
                     <label>
-                      <span className="sr-only">Phone number</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Phone <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterPhone}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterPhone: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterPhone: event.target.value.replace(/\D/g, "").slice(0, 11) }))}
                         type="tel"
                         inputMode="tel"
-                        maxLength={32}
-                        placeholder="Phone number"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        maxLength={11}
+                        pattern="0[0-9]{10}"
+                        aria-invalid={Boolean(phoneValue && !phoneIsValid)}
+                        placeholder="08012345678"
+                        className={`w-full rounded-xl border bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500 ${phoneValue && !phoneIsValid ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-emerald-500 dark:border-slate-600"}`}
                       />
+                      {phoneValue && !phoneIsValid && <span className="mt-1.5 block text-xs font-semibold text-rose-700 dark:text-rose-300">Use exactly 11 digits, starting with 0.</span>}
                     </label>
                     <label>
-                      <span className="sr-only">Email address</span>
+                      <span className="mb-1.5 block text-xs font-black text-slate-600 dark:text-slate-300">Email <span className="font-semibold text-slate-400">(optional)</span></span>
                       <input
                         value={form.reporterEmail}
-                        onChange={event =>
-                          setForm(current => ({
-                            ...current,
-                            reporterEmail: event.target.value,
-                          }))
-                        }
+                        onChange={event => setForm(current => ({ ...current, reporterEmail: event.target.value }))}
                         type="email"
                         maxLength={320}
-                        placeholder="Email address"
-                        className="w-full rounded-xl border border-cyan-100 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="you@example.com"
+                        className="w-full rounded-xl border border-slate-200 bg-white/75 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </label>
                   </div>
-                </div>
+                </section>
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
                   <Button
                     variant="outline"

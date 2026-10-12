@@ -15,5 +15,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/**/*.test.ts"],
+    env: {
+      ECR_ADMIN_PASSWORD: "admin123@",
+      JWT_SECRET: "test-secret-key-for-local-tests",
+    },
   },
 });

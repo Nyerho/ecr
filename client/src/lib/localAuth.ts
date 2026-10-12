@@ -12,6 +12,20 @@ type StoredUser = LocalUser & {
 
 const USERS_KEY = "ecr-local-users";
 const SESSION_KEY = "ecr-local-session";
+export const PASSWORD_REQUIREMENT_HINT =
+  "Use at least 8 characters with uppercase, lowercase, number, and symbol.";
+export function checkPasswordRequirements(password: string) {
+  return {
+    minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[^A-Za-z0-9]/.test(password),
+  };
+}
+export function isPasswordStrong(password: string) {
+  return Object.values(checkPasswordRequirements(password)).every(Boolean);
+}
 
 function readUsers(): StoredUser[] {
   try {
@@ -46,8 +60,7 @@ export function registerLocalUser(input: {
   if (name.length < 2) throw new Error("Enter your full name.");
   if (!email || !email.includes("@"))
     throw new Error("Enter a valid email address.");
-  if (password.length < 8)
-    throw new Error("Use at least 8 characters for your password.");
+  if (!isPasswordStrong(password)) throw new Error(PASSWORD_REQUIREMENT_HINT);
 
   const users = readUsers();
   if (users.some(user => user.email === email)) {

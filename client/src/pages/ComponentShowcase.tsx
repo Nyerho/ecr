@@ -157,7 +157,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTheme } from "@/contexts/ThemeContext";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
@@ -165,8 +164,6 @@ import {
   CalendarIcon,
   Check,
   Clock,
-  Moon,
-  Sun,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -174,7 +171,6 @@ import { toast as sonnerToast } from "sonner";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 
 export default function ComponentsShowcase() {
-  const { theme, toggleTheme } = useTheme();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [datePickerDate, setDatePickerDate] = useState<Date>();
   const [selectedFruits, setSelectedFruits] = useState<string[]>([]);
@@ -233,13 +229,6 @@ export default function ComponentsShowcase() {
           <h2 className="text-3xl font-bold tracking-tight mb-6">
             Shadcn/ui Component Library
           </h2>
-          <Button variant="outline" size="icon" onClick={toggleTheme}>
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
         </div>
 
         <div className="space-y-12">
@@ -782,7 +771,7 @@ export default function ComponentsShowcase() {
                     <TableCaption>A list of your recent invoices.</TableCaption>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Invoice</TableHead>
+                        <TableHead className="w-25">Invoice</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Method</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -1269,7 +1258,7 @@ export default function ComponentsShowcase() {
                 <Separator />
                 <div className="space-y-2">
                   <Label>Scroll Area</Label>
-                  <ScrollArea className="h-[200px] w-full rounded-md border overflow-hidden">
+                  <ScrollArea className="h-50 w-full rounded-md border overflow-hidden">
                     <div className="p-4">
                       <div className="space-y-4">
                         {Array.from({ length: 20 }).map((_, i) => (
@@ -1292,7 +1281,7 @@ export default function ComponentsShowcase() {
               <CardContent className="pt-6">
                 <ResizablePanelGroup
                   direction="horizontal"
-                  className="min-h-[200px] rounded-lg border"
+                  className="min-h-50 rounded-lg border"
                 >
                   <ResizablePanel defaultSize={50}>
                     <div className="flex h-full items-center justify-center p-6">
