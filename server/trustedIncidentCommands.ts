@@ -599,7 +599,17 @@ export async function listTrustedOperations(principal: CommandPrincipal) {
     query = database.collection("incidents").where("organizationId", "==", principal.organizationId).orderBy("createdAt", "desc").limit(100) as typeof query;
   }
   const snapshot = await query.get();
-  return snapshot.docs.filter(doc => canAccessIncident(principal, doc.data())).map(doc => ({ id: doc.id, ...doc.data(), description: undefined, reporterPhone: undefined, reporterEmail: undefined, latitude: undefined, longitude: undefined }));
+  const incidents = snapshot.docs.filter(doc => canAccessIncident(principal, doc.data())).map(doc => ({ id: doc.id, ...doc.data(), description: undefined, reporterPhone: undefined, reporterEmail: undefined, latitude: undefined, longitude: undefined }));
+  await database.collection("auditEvents").add({
+    action: "sensitive_read.operations_queue",
+    actorUid: principal.uid,
+    resourceType: "operationsQueue",
+    resourceId: principal.organizationId ?? "all",
+    result: "success",
+    metadata: { returnedCount: incidents.length, role: principal.role },
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return incidents;
 }
 
 export async function upsertOrganizationMembership(input: {

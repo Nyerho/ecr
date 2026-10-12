@@ -59,7 +59,7 @@ The repository does not pretend that a backup exists until the operator configur
 
 ## Access and security controls
 
-The trusted backend currently verifies Firebase ID tokens, checks revoked sessions, enforces role and organization membership, redacts the operations queue, uses transactional state changes, records audit events, applies request-size limits, adds security headers, and rate-limits the tRPC compatibility surface.
+The trusted backend currently verifies Firebase ID tokens, checks revoked sessions, enforces role and organization membership, redacts the operations queue, records each authorized operations-queue read as a restricted `sensitive_read.operations_queue` audit event, uses transactional state changes, records audit events, applies request-size limits, adds security headers, and rate-limits the tRPC compatibility surface.
 
 Remaining Phase 2 gates include:
 
