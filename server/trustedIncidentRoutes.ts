@@ -4,6 +4,7 @@ import {
   CommandError,
   createTrustedIncident,
   listTrustedOperations,
+  upsertOrganizationMembership,
   transitionTrustedIncident,
 } from "./trustedIncidentCommands";
 
@@ -60,6 +61,23 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json({ incidents: await listTrustedOperations(principal) });
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/organizations/:organizationId/memberships", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      const result = await upsertOrganizationMembership({
+        principal,
+        uid: req.body?.uid,
+        organizationId: req.params.organizationId,
+        jurisdictionId: req.body?.jurisdictionId,
+        role: req.body?.role,
+      });
+      res.status(200).json(result);
     } catch (error) {
       sendCommandError(res, error);
     }

@@ -84,5 +84,25 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow update, delete: if false;
     }
+
+    // Trusted API collections. Clients may not forge memberships, state
+    // transitions, audit history, idempotency records, or delivery events.
+    match /organizationMemberships/{membershipId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+    match /incidentEvents/{eventId} {
+      allow read, write: if false;
+    }
+    match /auditEvents/{eventId} {
+      allow read, write: if false;
+    }
+    match /idempotencyKeys/{keyId} {
+      allow read, write: if false;
+    }
+    match /notificationDeliveries/{deliveryId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

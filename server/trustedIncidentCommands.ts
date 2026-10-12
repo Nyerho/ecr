@@ -1,10 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import {
-  FieldPath,
-  FieldValue,
-  type DocumentSnapshot,
-} from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAuth, getFirebaseFirestore } from "./_core/firebaseAdmin";
 
 export const INCIDENT_CATEGORIES = [
@@ -19,12 +15,21 @@ export const INCIDENT_CATEGORIES = [
 ] as const;
 export type IncidentCategory = (typeof INCIDENT_CATEGORIES)[number];
 export type InstitutionalRole = "admin" | "dispatcher" | "coordinator" | "responder";
+export type OrganizationMembership = {
+  id: string;
+  uid: string;
+  organizationId: string;
+  jurisdictionId: string | null;
+  role: InstitutionalRole;
+  active: boolean;
+};
 export type CommandPrincipal = {
   uid: string;
   email: string | null;
   role: string;
   organizationId: string | null;
   jurisdictionId: string | null;
+  memberships: OrganizationMembership[];
   token: DecodedIdToken;
 };
 
@@ -97,15 +102,37 @@ function optionalCoordinate(value: unknown, field: string) {
 }
 
 async function principalFromToken(token: DecodedIdToken): Promise<CommandPrincipal> {
-  const profile = await getFirebaseFirestore().collection("users").doc(token.uid).get();
+  const database = getFirebaseFirestore();
+  const profile = await database.collection("users").doc(token.uid).get();
   const data = profile.exists ? profile.data() ?? {} : {};
-  const role = typeof data.role === "string" ? data.role : "citizen";
+  const [adminRecord, membershipSnapshot] = await Promise.all([
+    database.collection("admins").doc(token.uid).get(),
+    database.collection("organizationMemberships").where("uid", "==", token.uid).where("active", "==", true).limit(50).get(),
+  ]);
+  const memberships = membershipSnapshot.docs.flatMap(snapshot => {
+    const membership = snapshot.data();
+    if (typeof membership.organizationId !== "string" || !operationalRoles.has(membership.role as InstitutionalRole)) return [];
+    return [{
+      id: snapshot.id,
+      uid: token.uid,
+      organizationId: membership.organizationId,
+      jurisdictionId: typeof membership.jurisdictionId === "string" ? membership.jurisdictionId : null,
+      role: membership.role as InstitutionalRole,
+      active: membership.active === true,
+    }];
+  });
+  const profileOrganizationId = typeof data.organizationId === "string" ? data.organizationId : null;
+  const selectedMembership = memberships.find(membership => membership.organizationId === profileOrganizationId) ?? memberships[0];
+  const role = adminRecord.data()?.active === true
+    ? "admin"
+    : selectedMembership?.role ?? (typeof data.role === "string" ? data.role : "citizen");
   return {
     uid: token.uid,
     email: token.email ?? (typeof data.email === "string" ? data.email : null),
     role,
-    organizationId: typeof data.organizationId === "string" ? data.organizationId : null,
-    jurisdictionId: typeof data.jurisdictionId === "string" ? data.jurisdictionId : null,
+    organizationId: selectedMembership?.organizationId ?? profileOrganizationId,
+    jurisdictionId: selectedMembership?.jurisdictionId ?? (typeof data.jurisdictionId === "string" ? data.jurisdictionId : null),
+    memberships,
     token,
   };
 }
@@ -129,7 +156,7 @@ function requireOperationalPrincipal(principal: CommandPrincipal) {
   if (!operationalRoles.has(principal.role as InstitutionalRole)) {
     throw new CommandError("FORBIDDEN", "Institutional operations access is required.");
   }
-  if (principal.role !== "admin" && !principal.organizationId) {
+  if (principal.role !== "admin" && (!principal.organizationId || principal.memberships.length === 0)) {
     throw new CommandError("FORBIDDEN", "An active organization membership is required.");
   }
 }
@@ -137,7 +164,7 @@ function requireOperationalPrincipal(principal: CommandPrincipal) {
 function canAccessIncident(principal: CommandPrincipal, incident: Record<string, unknown>) {
   if (principal.role === "admin") return true;
   if (incident.reporterUid === principal.uid) return true;
-  if (principal.organizationId && incident.organizationId === principal.organizationId) return true;
+  if (principal.memberships.some(membership => membership.organizationId === incident.organizationId && (!incident.jurisdictionId || !membership.jurisdictionId || membership.jurisdictionId === incident.jurisdictionId))) return true;
   if (principal.jurisdictionId && incident.jurisdictionId === principal.jurisdictionId && principal.role === "dispatcher") return true;
   return false;
 }
@@ -354,4 +381,48 @@ export async function listTrustedOperations(principal: CommandPrincipal) {
   }
   const snapshot = await query.get();
   return snapshot.docs.filter(doc => canAccessIncident(principal, doc.data())).map(doc => ({ id: doc.id, ...doc.data(), description: undefined, reporterPhone: undefined, reporterEmail: undefined, latitude: undefined, longitude: undefined }));
+}
+
+export async function upsertOrganizationMembership(input: {
+  principal: CommandPrincipal;
+  uid: unknown;
+  organizationId: unknown;
+  jurisdictionId?: unknown;
+  role: unknown;
+}) {
+  if (input.principal.role !== "admin") {
+    throw new CommandError("FORBIDDEN", "Only an authorized ECR administrator can manage memberships.");
+  }
+  const uid = optionalText(input.uid, 128, "uid");
+  const organizationId = optionalText(input.organizationId, 128, "organizationId");
+  const jurisdictionId = optionalText(input.jurisdictionId, 128, "jurisdictionId");
+  if (!uid || !organizationId) {
+    throw new CommandError("INVALID_ARGUMENT", "A user and organization are required.");
+  }
+  if (!operationalRoles.has(input.role as InstitutionalRole) || input.role === "admin") {
+    throw new CommandError("INVALID_ARGUMENT", "Membership role must be dispatcher, coordinator, or responder.");
+  }
+  const role = input.role as Exclude<InstitutionalRole, "admin">;
+  const database = getFirebaseFirestore();
+  const membershipId = createHash("sha256").update(`${uid}:${organizationId}`).digest("hex").slice(0, 40);
+  const membershipRef = database.collection("organizationMemberships").doc(membershipId);
+  const result = { id: membershipId, uid, organizationId, jurisdictionId, role, active: true };
+  await database.runTransaction(async transaction => {
+    transaction.set(membershipRef, {
+      ...result,
+      approvedBy: input.principal.uid,
+      approvedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    transaction.create(database.collection("auditEvents").doc(), {
+      action: "membership.upserted",
+      actorUid: input.principal.uid,
+      resourceType: "organizationMembership",
+      resourceId: membershipId,
+      result: "success",
+      metadata: { uid, organizationId, jurisdictionId, role },
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return result;
 }
