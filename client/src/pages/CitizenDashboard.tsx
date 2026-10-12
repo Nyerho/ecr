@@ -17,7 +17,7 @@ import {
 } from "@/lib/localOfflineReports";
 import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
 import {
-  createFirestoreIncident,
+  createReportIncident,
   ensureAnonymousFirebaseUser,
   firebaseConfigured,
   reportSubmissionMessage,
@@ -638,7 +638,7 @@ export default function Home() {
     };
     try {
       const reporter = user ?? (await ensureAnonymousFirebaseUser());
-      const result = await createFirestoreIncident({
+      const result = await createReportIncident({
         reporterUid: reporter.uid,
         ...payload,
       });
@@ -684,7 +684,7 @@ export default function Home() {
     setPendingReports(loadPendingReports());
     try {
       const reporter = user ?? (await ensureAnonymousFirebaseUser());
-      const result = await createFirestoreIncident({ reporterUid: reporter.uid, ...pending });
+      const result = await createReportIncident({ reporterUid: reporter.uid, ...pending });
       removePendingReport(pending.id);
       setPendingReports(loadPendingReports());
       setReportReceipt({ reference: result.publicReference, location: pending.locationLabel || "Location shared privately" });

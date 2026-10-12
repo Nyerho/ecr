@@ -4,9 +4,9 @@
 
 This release introduces the first additive slice of the Phase 1 safety foundation. It does not yet declare Phase 1 complete and it does not enable billing.
 
-## What was added
+## Trusted backend boundary
 
-The Express server now exposes a trusted command boundary under `/api/v1`:
+The Express server exposes:
 
 - `POST /api/v1/incidents`
 - `POST /api/v1/incidents/:incidentId/transition`
@@ -17,11 +17,22 @@ The command boundary verifies Firebase ID tokens server-side and loads role, org
 
 Incident creation and transitions use Firestore transactions and write the incident, event, audit event, idempotency record, and safe public tracking projection together. Replayed command keys return the original result, while stale versions and invalid state transitions are rejected.
 
-Operational queue responses redact descriptions, contact details, and precise coordinates. Non-admin institutional access requires an active organization membership and is filtered to that organization. An authorized ECR administrator can provision or update dispatcher, coordinator, or responder memberships; membership changes are audited.
+Operational queue responses redact descriptions, contact details, and precise coordinates. Non-admin institutional access requires an active organization membership and is filtered to that organization. Authorized ECR administrators can provision or update dispatcher, coordinator, or responder memberships; membership changes are audited.
 
-Direct client writes are blocked for `organizationMemberships`, `incidentEvents`, trusted `auditEvents`, `idempotencyKeys`, and `notificationDeliveries`. The existing legacy client writes are intentionally not blocked yet because web/mobile migration to the trusted commands is still pending.
+Direct client writes are blocked for `organizationMemberships`, `incidentEvents`, trusted `auditEvents`, `idempotencyKeys`, and `notificationDeliveries`.
 
-The current client still uses the legacy Firebase path; migration to these commands is intentionally deferred until the backend is deployed with service credentials and integration tests are in place.
+## Staged citizen migration
+
+The web citizen-report flow now calls `createReportIncident`, which uses the trusted API when:
+
+```text
+VITE_ECR_TRUSTED_COMMANDS_ENABLED=true
+VITE_ECR_TRUSTED_API_URL=https://trusted-api.example.com
+```
+
+When the flag is `false`—the default—the existing Firebase batch path remains active. This prevents a deployment without Firebase Admin credentials from interrupting citizen reporting. The flag must only be enabled after the trusted backend is deployed, configured, and tested in staging.
+
+The mobile client remains on the existing path until the same backend endpoint is configured for Expo Go and mobile integration tests are available.
 
 ## Required server configuration
 
@@ -35,4 +46,4 @@ The private key must remain server-side and must never be added to Vite or mobil
 
 ## Remaining Phase 1 work
 
-This milestone does not yet provide complete membership lifecycle approvals, MFA, session/device revocation, assignment acceptance/decline, notification delivery receipts, retry/dead-letter handling, private media storage, retention/deletion workflows, or production environment separation. Those remain explicit blockers before an institutional pilot or monetization.
+This milestone does not yet provide complete membership lifecycle approvals, MFA, session/device revocation, assignment acceptance/decline, notification delivery receipts, retry/dead-letter handling, private media storage, retention/deletion workflows, production environment separation, or the final web/mobile migration. Those remain explicit blockers before an institutional pilot or monetization.

@@ -81,6 +81,8 @@ const app = firebaseConfigured
   : null;
 export const firebaseAuth = app ? getAuth(app) : null;
 export const firestore = app ? getFirestore(app) : null;
+export const trustedCommandsEnabled = import.meta.env.VITE_ECR_TRUSTED_COMMANDS_ENABLED === "true";
+const trustedApiBaseUrl = (import.meta.env.VITE_ECR_TRUSTED_API_URL || "").replace(/\/$/, "");
 
 export function firebaseSetupMessage() {
   return firebaseConfigured
@@ -155,6 +157,28 @@ export async function ensureAnonymousFirebaseUser() {
   if (auth.currentUser) return auth.currentUser;
   const credential = await signInAnonymously(auth);
   return credential.user;
+}
+
+export async function createReportIncident(input: Parameters<typeof createFirestoreIncident>[0]) {
+  if (!trustedCommandsEnabled) return createFirestoreIncident(input);
+  const user = firebaseAuth?.currentUser ?? (await ensureAnonymousFirebaseUser());
+  if (!trustedApiBaseUrl) {
+    throw new Error("The trusted incident API is enabled but VITE_ECR_TRUSTED_API_URL is missing.");
+  }
+  const token = await user.getIdToken();
+  const response = await fetch(`${trustedApiBaseUrl}/api/v1/incidents`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ...input, commandKey: `web-${crypto.randomUUID()}` }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(result.error || "The trusted incident service rejected the report.") as Error & { code?: string; status?: number };
+    error.code = result.code;
+    error.status = response.status;
+    throw error;
+  }
+  return result as { id: string; publicReference: string; replayed?: boolean };
 }
 export function sendFirebaseVerificationEmail(user: FirebaseUser) {
   return sendEmailVerification(user);

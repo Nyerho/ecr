@@ -195,6 +195,7 @@ export async function createTrustedIncident(input: {
   category: unknown;
   description: unknown;
   commandKey: unknown;
+  reporterName?: unknown;
   locationLabel?: unknown;
   latitude?: unknown;
   longitude?: unknown;
@@ -207,6 +208,7 @@ export async function createTrustedIncident(input: {
     throw new CommandError("INVALID_ARGUMENT", "A report description is required.");
   }
   const commandKey = requireCommandKey(input.commandKey);
+  const reporterName = optionalText(input.reporterName, 160, "reporterName");
   const locationLabel = optionalText(input.locationLabel, 220, "locationLabel");
   const latitude = optionalCoordinate(input.latitude, "latitude");
   const longitude = optionalCoordinate(input.longitude, "longitude");
@@ -242,6 +244,7 @@ export async function createTrustedIncident(input: {
     const incident = {
       publicReference: reference,
       reporterUid: input.principal.uid,
+      reporterName,
       category,
       description,
       locationLabel,
