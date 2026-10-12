@@ -57,6 +57,12 @@ Before a controlled pilot, the operator must complete and record:
 
 The repository does not pretend that a backup exists until the operator configures and verifies it in the Firebase/GCP project.
 
+## Private media foundation
+
+Incident media is now represented by server-created `incidentMedia` metadata only. Clients cannot read or write this collection directly. The trusted API validates the incident access scope, media kind, MIME type, and an 8 MB per-file limit before creating a `pending_upload` intent under a private storage path. Media metadata reads are access-controlled and audited as `sensitive_read.incident_media`.
+
+The actual object-storage upload, malware/integrity scan, signed download URL, and deletion worker remain disabled until a production storage provider and bucket policy are selected. Public tracking projections must never contain media paths or download URLs.
+
 ## Access and security controls
 
 The trusted backend currently verifies Firebase ID tokens, checks revoked sessions, enforces role and organization membership, redacts the operations queue, records each authorized operations-queue read as a restricted `sensitive_read.operations_queue` audit event, uses transactional state changes, records audit events, applies request-size limits, adds security headers, and rate-limits the tRPC compatibility surface.
