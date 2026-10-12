@@ -74,3 +74,20 @@ An unavailable scanner, malformed response, size mismatch, content-type mismatch
 - IAM policy limited to object operations under `private/incidents/*`.
 - No long-lived public URLs stored in Firestore or client state.
 - Backup and restore procedure tested separately from the primary bucket.
+
+## Lifecycle cleanup
+
+The administrator-only endpoint below finds abandoned pending uploads and old rejected or failed scans:
+
+```text
+POST /api/v1/operations/media-retention
+{ "execute": false }
+```
+
+Preview mode is always safe. Deletion requires both an administrator request with `execute=true` and the server-only flag:
+
+```env
+ECR_MEDIA_DELETION_ENABLED=true
+```
+
+When enabled, the worker deletes the private object first, then removes its Firestore metadata and writes an audit event. Keep the flag `false` until the legal retention schedule, backup process, and lifecycle policy have been approved and tested.

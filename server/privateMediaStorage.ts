@@ -1,4 +1,4 @@
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
 
@@ -48,6 +48,10 @@ export async function assertPrivateMediaObject(storagePath: string, expected: { 
 export async function createPrivateMediaDownloadUrl(storagePath: string, mimeType: string) {
   const command = new GetObjectCommand({ Bucket: ENV.mediaBucket, Key: storagePath, ResponseContentType: mimeType, ResponseContentDisposition: "inline" });
   return getSignedUrl(storageClient(), command, { expiresIn: 300 });
+}
+
+export async function deletePrivateMediaObject(storagePath: string) {
+  await storageClient().send(new DeleteObjectCommand({ Bucket: ENV.mediaBucket, Key: storagePath }));
 }
 
 export async function scanPrivateMedia(bytes: Buffer, mimeType: string) {

@@ -19,5 +19,6 @@ export const ENV = {
   mediaForcePathStyle: process.env.ECR_MEDIA_FORCE_PATH_STYLE === "true",
   mediaAccessKeyId: process.env.ECR_MEDIA_ACCESS_KEY_ID ?? "",
   mediaSecretAccessKey: process.env.ECR_MEDIA_SECRET_ACCESS_KEY ?? "",
+  mediaDeletionEnabled: process.env.ECR_MEDIA_DELETION_ENABLED === "true",
   malwareScannerUrl: process.env.ECR_MALWARE_SCANNER_URL ?? "",
 };

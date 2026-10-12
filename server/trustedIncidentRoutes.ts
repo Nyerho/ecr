@@ -13,6 +13,7 @@ import {
 } from "./trustedIncidentCommands";
 import { previewRetention } from "./retentionCommands";
 import { completeTrustedMediaUpload, createTrustedMediaDownloadUrl, createTrustedMediaIntent, createTrustedMediaUploadUrl, listTrustedIncidentMedia } from "./mediaCommands";
+import { processPrivateMediaRetention } from "./mediaRetentionCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -137,6 +138,16 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json(await previewRetention(principal));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.post("/api/v1/operations/media-retention", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await processPrivateMediaRetention(principal, req.body?.execute === true));
     } catch (error) {
       sendCommandError(res, error);
     }
