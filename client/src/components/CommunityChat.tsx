@@ -12,6 +12,7 @@ import {
 import {
   firebaseConfigured,
   hideCommunityMessage,
+  unhideCommunityMessage,
   sendCommunityMessage,
   subscribeToAdminCommunityChat,
   subscribeToCommunityChat,
@@ -119,10 +120,15 @@ export default function CommunityChat({
       toast.error("Notification permission was not enabled.");
   }
 
-  async function hideMessage(message: CommunityMessage) {
+  async function moderateMessage(message: CommunityMessage) {
     try {
-      await hideCommunityMessage(message.id);
-      toast.success("Message hidden from the public room.");
+      if (message.visibility === "hidden") {
+        await unhideCommunityMessage(message.id);
+        toast.success("Message restored to the public room.");
+      } else {
+        await hideCommunityMessage(message.id);
+        toast.success("Message hidden from the public room.");
+      }
     } catch {
       toast.error("Could not moderate this message.");
     }
@@ -218,10 +224,10 @@ export default function CommunityChat({
               {adminMode && (
                 <button
                   type="button"
-                  onClick={() => hideMessage(message)}
+                  onClick={() => moderateMessage(message)}
                   className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-rose-700 hover:underline"
                 >
-                  <EyeOff size={13} /> Hide message
+                  {message.visibility === "hidden" ? <><CheckCircle2 size={13} /> Unhide message</> : <><EyeOff size={13} /> Hide message</>}
                 </button>
               )}
             </article>
