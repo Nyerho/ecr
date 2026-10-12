@@ -11,6 +11,7 @@ import {
   respondToTrustedAssignment,
   transitionTrustedIncident,
 } from "./trustedIncidentCommands";
+import { previewRetention } from "./retentionCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -125,6 +126,16 @@ export function registerTrustedIncidentRoutes(app: Express) {
         status: req.body?.status,
         errorMessage: req.body?.errorMessage,
       }));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.get("/api/v1/operations/retention/preview", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await previewRetention(principal));
     } catch (error) {
       sendCommandError(res, error);
     }
