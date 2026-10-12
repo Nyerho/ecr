@@ -107,11 +107,11 @@ async function principalFromToken(token: DecodedIdToken): Promise<CommandPrincip
   const data = profile.exists ? profile.data() ?? {} : {};
   const [adminRecord, membershipSnapshot] = await Promise.all([
     database.collection("admins").doc(token.uid).get(),
-    database.collection("organizationMemberships").where("uid", "==", token.uid).where("active", "==", true).limit(50).get(),
+    database.collection("organizationMemberships").where("uid", "==", token.uid).limit(50).get(),
   ]);
   const memberships = membershipSnapshot.docs.flatMap(snapshot => {
     const membership = snapshot.data();
-    if (typeof membership.organizationId !== "string" || !operationalRoles.has(membership.role as InstitutionalRole)) return [];
+    if (membership.active !== true || typeof membership.organizationId !== "string" || !operationalRoles.has(membership.role as InstitutionalRole)) return [];
     return [{
       id: snapshot.id,
       uid: token.uid,
@@ -239,7 +239,7 @@ export async function createTrustedIncident(input: {
       actorUid: input.principal.uid,
       previousValue: null,
       newValue: "received",
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
     };
     const incident = {
       publicReference: reference,
@@ -332,7 +332,7 @@ export async function transitionTrustedIncident(input: {
       previousValue: currentStatus,
       newValue: input.nextStatus,
       note,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
     };
     const result = { id: snapshot.id, publicReference: incident.publicReference, status: input.nextStatus, version: input.expectedVersion + 1 };
     transaction.update(incidentRef, {

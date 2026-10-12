@@ -8,6 +8,7 @@ let firebaseAuth: Auth | null = null;
 let firebaseFirestore: Firestore | null = null;
 
 function requireFirebaseConfiguration() {
+  if (ENV.firebaseUseEmulators) return;
   if (!ENV.firebaseProjectId || !ENV.firebaseClientEmail || !ENV.firebasePrivateKey) {
     throw new Error(
       "Trusted Firebase backend is not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY."
@@ -20,13 +21,15 @@ export function getFirebaseApp() {
   requireFirebaseConfiguration();
   firebaseApp = getApps().length
     ? getApps()[0]!
-    : initializeApp({
-        credential: cert({
-          projectId: ENV.firebaseProjectId,
-          clientEmail: ENV.firebaseClientEmail,
-          privateKey: ENV.firebasePrivateKey.replace(/\\n/g, "\n"),
-        }),
-      });
+    : ENV.firebaseUseEmulators
+      ? initializeApp({ projectId: ENV.firebaseProjectId || "demo-ecr" })
+      : initializeApp({
+          credential: cert({
+            projectId: ENV.firebaseProjectId,
+            clientEmail: ENV.firebaseClientEmail,
+            privateKey: ENV.firebasePrivateKey.replace(/\\n/g, "\n"),
+          }),
+        });
   return firebaseApp;
 }
 

@@ -13,6 +13,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:emulator": "firebase emulators:exec --project demo-ecr \"ECR_RUN_EMULATOR_TESTS=true pnpm exec vitest run server/trustedIncidentCommands.emulator.test.ts\"",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
@@ -101,6 +102,7 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.11",
     "esbuild": "^0.25.0",
+    "firebase-tools": "^14.17.0",
     "pnpm": "^10.15.1",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",

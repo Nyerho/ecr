@@ -44,6 +44,16 @@ The trusted backend requires:
 
 The private key must remain server-side and must never be added to Vite or mobile environment variables.
 
+## Emulator integration tests
+
+The repository includes Auth and Firestore emulator configuration in `firebase.json` and an opt-in integration suite in `server/trustedIncidentCommands.emulator.test.ts`. Run it with:
+
+```bash
+pnpm test:emulator
+```
+
+The suite creates emulator users, verifies Firebase ID tokens, checks transactional incident/event/audit writes, verifies safe public projections, exercises idempotent replay, rejects citizen status changes, validates admin transitions and stale versions, and provisions an organization membership. The normal `pnpm test` command skips this suite so unit tests remain fast and do not require Java.
+
 ## Remaining Phase 1 work
 
 This milestone does not yet provide complete membership lifecycle approvals, MFA, session/device revocation, assignment acceptance/decline, notification delivery receipts, retry/dead-letter handling, private media storage, retention/deletion workflows, production environment separation, or the final web/mobile migration. Those remain explicit blockers before an institutional pilot or monetization.
