@@ -413,7 +413,7 @@ export default function Admin() {
       <header className="admin-header border-b border-border bg-card/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <BrandLogo className="w-20" imageClassName="rounded-xl" />
+            <BrandLogo className="w-28 sm:w-32" imageClassName="rounded-xl" />
             <span>
               <span className="block text-sm font-black tracking-[0.16em] text-primary">
                 ECR ADMIN
