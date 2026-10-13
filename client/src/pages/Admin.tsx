@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import BrandLogo from "@/components/BrandLogo";
 import CommunityChat from "@/components/CommunityChat";
+import DiagnosticsPanel from "@/components/DiagnosticsPanel";
 import { Button } from "@/components/ui/button";
 import {
   firebaseConfigured,
@@ -139,6 +140,7 @@ export default function Admin() {
   const [users, setUsers] = useState<FirebaseProfile[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [emergencyContacts, setEmergencyContacts] = useState<
     EmergencyContactRecord[]
   >([]);
@@ -432,6 +434,9 @@ export default function Admin() {
             >
               Citizen app
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setDiagnosticsOpen(true)}>
+              <Activity size={15} /> Connection check
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
               Exit
             </Button>
@@ -538,6 +543,10 @@ export default function Admin() {
           onUpdateStatus={updateIncidentStatus}
         />
       )}
+      <DiagnosticsPanel
+        open={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+      />
     </main>
   );
 }

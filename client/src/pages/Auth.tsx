@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   firebaseSetupMessage,
   registerFirebaseUser,
@@ -81,9 +81,6 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
               />
             </div>
             <div className="mt-10">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#13b981] text-[#063f3d]">
-                <ShieldCheck size={25} />
-              </div>
               <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#13b981]">
                 Emergency Community Response
               </p>
