@@ -9,6 +9,7 @@ const enabled = process.env.ECR_RUN_EMULATOR_TESTS === "true";
 
 type TrustedCommands = typeof import("./trustedIncidentCommands");
 let commands: TrustedCommands;
+let analytics: typeof import("./analyticsCommands");
 let firestore: ReturnType<typeof import("./_core/firebaseAdmin").getFirebaseFirestore>;
 
 async function createEmulatorUser(email: string) {
@@ -24,6 +25,7 @@ async function createEmulatorUser(email: string) {
 describe.skipIf(!enabled)("trusted Firebase commands against emulators", () => {
   beforeAll(async () => {
     commands = await import("./trustedIncidentCommands");
+    analytics = await import("./analyticsCommands");
     const admin = await import("./_core/firebaseAdmin");
     firestore = admin.getFirebaseFirestore();
   });
@@ -70,6 +72,21 @@ describe.skipIf(!enabled)("trusted Firebase commands against emulators", () => {
 
     expect(second).toMatchObject({ id: first.id, publicReference: first.publicReference, replayed: true });
     expect(incidents.size).toBe(1);
+  });
+
+  it("returns privacy-safe analytics and audits the analytics view", async () => {
+    const admin = await createEmulatorUser("analytics-admin@example.test");
+    await firestore.collection("admins").doc(admin.localId).set({ active: true });
+    const adminPrincipal = await commands.authenticateBearerToken(`Bearer ${admin.idToken}`);
+    const citizen = await createEmulatorUser("analytics-citizen@example.test");
+    const citizenPrincipal = await commands.authenticateBearerToken(`Bearer ${citizen.idToken}`);
+    await commands.createTrustedIncident({ principal: citizenPrincipal, category: "medical", description: "Analytics test incident for the emulator.", reporterEmail: "analytics-citizen@example.test", commandKey: "analytics-create-001" });
+    const result = await analytics.getTrustedAnalytics(adminPrincipal, 30);
+    expect(result.totals.incidents).toBeGreaterThanOrEqual(1);
+    expect(result.byCategory).toEqual(expect.arrayContaining([expect.objectContaining({ key: "medical" })]));
+    expect(result).not.toHaveProperty("reporterPhone");
+    const audit = await firestore.collection("auditEvents").where("action", "==", "analytics.viewed").where("actorUid", "==", admin.localId).get();
+    expect(audit.size).toBe(1);
   });
 
   it("requires active admin authorization for status transitions and rejects stale versions", async () => {
