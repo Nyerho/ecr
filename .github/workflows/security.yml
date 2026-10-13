@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          matches="$(git grep -nI -E '(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|-----BEGIN)' -- ':!pnpm-lock.yaml' ':!package-lock.json' ':!mobile/package-lock.json' || true)"
+          matches="$(git grep -nI -E '(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|-----BEGIN)' -- ':!pnpm-lock.yaml' ':!package-lock.json' ':!mobile/package-lock.json' ':!.github/workflows/security.yml' || true)"
           if [[ -n "$matches" ]]; then
             echo "Potential secret material found in tracked files:"
             echo "$matches"

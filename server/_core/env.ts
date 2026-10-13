@@ -13,6 +13,7 @@ export const ENV = {
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",
   firebaseUseEmulators: process.env.FIREBASE_USE_EMULATORS === "true",
+  requireMfaForInstitutional: process.env.ECR_REQUIRE_MFA_FOR_INSTITUTIONAL === "true",
   mediaBucket: process.env.ECR_MEDIA_BUCKET ?? "",
   mediaRegion: process.env.ECR_MEDIA_REGION ?? "",
   mediaEndpoint: process.env.ECR_MEDIA_ENDPOINT ?? "",

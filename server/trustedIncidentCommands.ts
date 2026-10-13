@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAuth, getFirebaseFirestore } from "./_core/firebaseAdmin";
+import { ENV } from "./_core/env";
 
 export const INCIDENT_CATEGORIES = [
   "medical",
@@ -145,7 +146,12 @@ export async function authenticateBearerToken(authorization: string | undefined)
   if (!tokenValue) throw new CommandError("UNAUTHENTICATED", "A Firebase ID token is required.");
   try {
     const token = await getFirebaseAuth().verifyIdToken(tokenValue, true);
-    return principalFromToken(token);
+    const principal = await principalFromToken(token);
+    const hasSecondFactor = typeof token.firebase?.sign_in_second_factor === "string";
+    if (ENV.requireMfaForInstitutional && operationalRoles.has(principal.role as InstitutionalRole) && !hasSecondFactor) {
+      throw new CommandError("FORBIDDEN", "Multi-factor authentication is required for institutional operations.");
+    }
+    return principal;
   } catch (error) {
     if (error instanceof CommandError) throw error;
     throw new CommandError("UNAUTHENTICATED", "The Firebase session is invalid or revoked.");
@@ -607,6 +613,21 @@ export async function listTrustedOperations(principal: CommandPrincipal) {
     resourceId: principal.organizationId ?? "all",
     result: "success",
     metadata: { returnedCount: incidents.length, role: principal.role },
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return incidents;
+}
+
+export async function exportTrustedOperations(principal: CommandPrincipal) {
+  const incidents = await listTrustedOperations(principal);
+  const database = getFirebaseFirestore();
+  await database.collection("auditEvents").add({
+    action: "sensitive_export.operations_queue",
+    actorUid: principal.uid,
+    resourceType: "operationsQueue",
+    resourceId: principal.organizationId ?? "all",
+    result: "success",
+    metadata: { returnedCount: incidents.length, role: principal.role, format: "json" },
     createdAt: FieldValue.serverTimestamp(),
   });
   return incidents;

@@ -5,6 +5,7 @@ import {
   CommandError,
   createTrustedIncident,
   expireStaleAssignments,
+  exportTrustedOperations,
   listTrustedOperations,
   recordNotificationDelivery,
   upsertOrganizationMembership,
@@ -104,6 +105,16 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json({ incidents: await listTrustedOperations(principal) });
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.get("/api/v1/operations/queue/export", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json({ incidents: await exportTrustedOperations(principal), format: "json", redacted: true });
     } catch (error) {
       sendCommandError(res, error);
     }

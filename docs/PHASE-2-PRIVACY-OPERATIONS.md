@@ -71,15 +71,16 @@ Authenticated users can revoke their own refresh tokens through `POST /api/v1/se
 
 The repository now runs `.github/workflows/security.yml` on pushes and pull requests. It installs from the frozen lockfile, runs a production dependency audit, scans tracked files for common private-key and cloud-secret patterns, and runs TypeScript validation. The dependency audit is currently non-blocking while existing transitive advisories are reviewed; the secret-pattern scan and type check are blocking.
 
-Remaining Phase 2 gates include:
+Completed Phase 2 foundations now include:
 
-- MFA or equivalent stronger authentication for institutional accounts;
-- explicit session/device revocation runbook;
-- sensitive-read and export audit events;
-- private media storage with signed, time-limited access;
+- opt-in MFA enforcement for institutional trusted-API sessions via `ECR_REQUIRE_MFA_FOR_INSTITUTIONAL=true`;
+- self-service and administrator session revocation with audit events;
+- redacted operations queue exports with `sensitive_export.operations_queue` audit events;
+- private media storage, scanning, signed URLs, and lifecycle controls;
 - dependency and secret scanning in CI;
-- incident-response contacts and breach-notification procedure;
-- legal review of the public privacy notice and emergency disclaimer.
+- incident-response runbook draft.
+
+Remaining Phase 2 approvals include legal review of [the privacy notice draft](./PRIVACY-NOTICE-DRAFT.md), named incident-response contacts, final retention periods, production MFA enrollment testing, and a completed backup/restore exercise.
 
 ## Privacy notice draft outline
 
