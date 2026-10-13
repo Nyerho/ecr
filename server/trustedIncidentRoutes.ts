@@ -16,6 +16,7 @@ import { previewRetention } from "./retentionCommands";
 import { completeTrustedMediaUpload, createTrustedMediaDownloadUrl, createTrustedMediaIntent, createTrustedMediaUploadUrl, listTrustedIncidentMedia } from "./mediaCommands";
 import { processPrivateMediaRetention } from "./mediaRetentionCommands";
 import { revokeUserSessions } from "./securityCommands";
+import { getTrustedAnalytics } from "./analyticsCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -105,6 +106,16 @@ export function registerTrustedIncidentRoutes(app: Express) {
     if (!principal) return;
     try {
       res.status(200).json({ incidents: await listTrustedOperations(principal) });
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
+  app.get("/api/v1/operations/analytics", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await getTrustedAnalytics(principal, req.query.days));
     } catch (error) {
       sendCommandError(res, error);
     }

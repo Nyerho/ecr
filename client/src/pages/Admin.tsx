@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Activity,
+  BarChart3,
   Building2,
   Check,
   CheckCircle2,
@@ -46,6 +47,7 @@ import {
   type UserRole,
 } from "@/lib/firebase";
 import { toast } from "sonner";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Organization = {
   name: string;
@@ -71,6 +73,7 @@ type EmergencyContactForm = {
 };
 type Tab =
   | "overview"
+  | "analytics"
   | "incidents"
   | "community"
   | "users"
@@ -394,6 +397,7 @@ export default function Admin() {
   const navigation: Array<{ key: Tab; label: string; icon: typeof Activity }> =
     [
       { key: "overview", label: "Overview", icon: Activity },
+      { key: "analytics", label: "Analytics", icon: BarChart3 },
       { key: "incidents", label: "Incidents", icon: FileText },
       { key: "community", label: "Community room", icon: MessageCircle },
       { key: "users", label: "Users & roles", icon: Users },
@@ -491,6 +495,9 @@ export default function Admin() {
                   onSelect={setTab}
                 />
               )}
+              {tab === "analytics" && (
+                <AnalyticsDashboard incidents={incidents} organizations={organizations} />
+              )}
               {tab === "incidents" && (
                 <IncidentTable
                   incidents={incidents}
@@ -533,6 +540,29 @@ export default function Admin() {
       )}
     </main>
   );
+}
+
+function AnalyticsDashboard({ incidents, organizations }: { incidents: FirestoreIncident[]; organizations: Organization[] }) {
+  const analytics = useMemo(() => {
+    const recent = incidents.filter(incident => {
+      const created = incident.createdAt && typeof incident.createdAt === "object" && "toDate" in incident.createdAt ? (incident.createdAt as { toDate: () => Date }).toDate() : new Date(String(incident.createdAt ?? ""));
+      return !Number.isNaN(created.getTime()) && created.getTime() >= Date.now() - 30 * 86_400_000;
+    });
+    const count = (key: keyof FirestoreIncident) => Object.entries(recent.reduce<Record<string, number>>((result, incident) => { const value = String(incident[key] ?? "unknown"); result[value] = (result[value] ?? 0) + 1; return result; }, {})).map(([name, value]) => ({ name: name.replaceAll("_", " "), value })).sort((a, b) => b.value - a.value);
+    const daily = recent.reduce<Record<string, number>>((result, incident) => { const raw = incident.createdAt && typeof incident.createdAt === "object" && "toDate" in incident.createdAt ? (incident.createdAt as { toDate: () => Date }).toDate() : new Date(String(incident.createdAt ?? "")); if (!Number.isNaN(raw.getTime())) { const day = raw.toISOString().slice(5, 10); result[day] = (result[day] ?? 0) + 1; } return result; }, {});
+    const resolved = recent.filter(incident => ["resolved", "closed"].includes(incident.status)).length;
+    return { recent, status: count("status"), category: count("category"), daily: Object.entries(daily).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value })), resolved, active: recent.filter(incident => !["resolved", "closed", "cancelled"].includes(incident.status)).length, organizations: organizations.length };
+  }, [incidents, organizations]);
+  const metricCards = [["Reports · 30 days", analytics.recent.length], ["Active response", analytics.active], ["Resolved", analytics.resolved], ["Resolution rate", `${analytics.recent.length ? Math.round((analytics.resolved / analytics.recent.length) * 100) : 0}%`]];
+  return <div className="space-y-6">
+    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="eyebrow">Decision support</p><h2 className="section-title">Advanced analytics</h2><p className="mt-1 text-sm text-muted-foreground">A privacy-safe 30-day view of demand, queue health, and resolution progress.</p></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800">Admin-only · aggregated</span></div>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{metricCards.map(([label, value]) => <div key={String(label)} className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="text-3xl font-black">{value}</p><p className="mt-1 text-sm font-semibold text-muted-foreground">{label}</p></div>)}</div>
+    <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Demand trend</p><h3 className="section-title">Reports by day</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={analytics.daily}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div></section>
+      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Workflow health</p><h3 className="section-title">Status mix</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.status} layout="vertical" margin={{ left: 10, right: 12 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="name" width={85} tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div></section>
+    </div>
+    <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Demand profile</p><h3 className="section-title">Categories</h3></div><span className="text-xs font-semibold text-muted-foreground">{analytics.organizations} organizations configured</span></div><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.category}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={55} /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="value" fill="#0e7490" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div></section>
+  </div>;
 }
 
 function Overview({
