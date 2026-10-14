@@ -207,6 +207,15 @@ export async function transitionReportIncident(input: {
   }
   return result as { id: string; status: string; version: number; replayed?: boolean };
 }
+
+export async function fetchTrustedAnalytics(days = 30) {
+  if (!trustedApiBaseUrl || !firebaseAuth?.currentUser) return null;
+  const token = await firebaseAuth.currentUser.getIdToken();
+  const response = await fetch(`${trustedApiBaseUrl}/api/v1/operations/analytics?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "Could not load operational analytics.");
+  return result as { periodDays: number; totals: { incidents: number; active: number; resolved: number; resolutionRate: number; averageResolutionHours: number | null }; byStatus: Array<{ key: string; value: number }>; byCategory: Array<{ key: string; value: number }>; byOrganization: Array<{ key: string; value: number }>; daily: Array<{ date: string; value: number }> };
+}
 export function sendFirebaseVerificationEmail(user: FirebaseUser) {
   return sendEmailVerification(user);
 }

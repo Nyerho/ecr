@@ -13,4 +13,13 @@ export const ENV = {
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",
   firebaseUseEmulators: process.env.FIREBASE_USE_EMULATORS === "true",
+  requireMfaForInstitutional: process.env.ECR_REQUIRE_MFA_FOR_INSTITUTIONAL === "true",
+  mediaBucket: process.env.ECR_MEDIA_BUCKET ?? "",
+  mediaRegion: process.env.ECR_MEDIA_REGION ?? "",
+  mediaEndpoint: process.env.ECR_MEDIA_ENDPOINT ?? "",
+  mediaForcePathStyle: process.env.ECR_MEDIA_FORCE_PATH_STYLE === "true",
+  mediaAccessKeyId: process.env.ECR_MEDIA_ACCESS_KEY_ID ?? "",
+  mediaSecretAccessKey: process.env.ECR_MEDIA_SECRET_ACCESS_KEY ?? "",
+  mediaDeletionEnabled: process.env.ECR_MEDIA_DELETION_ENABLED === "true",
+  malwareScannerUrl: process.env.ECR_MALWARE_SCANNER_URL ?? "",
 };

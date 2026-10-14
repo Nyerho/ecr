@@ -1763,6 +1763,10 @@ export default function Home() {
           </div>
         </div>
       )}
+      <DiagnosticsPanel
+        open={diagnosticsOpen}
+        onClose={() => setDiagnosticsOpen(false)}
+      />
     </div>
   );
 }
