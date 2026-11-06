@@ -27,6 +27,7 @@ const preferredTypes: Record<string, AgencyCandidate["type"][]> = {
 };
 
 function numberOrNull(value: string | null | undefined) {
+  if (value === null || value === undefined || value.trim() === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }

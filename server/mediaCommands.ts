@@ -1,14 +1,16 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseFirestore } from "./_core/firebaseAdmin";
-import { CommandError, type CommandPrincipal } from "./trustedIncidentCommands";
+import { CommandError, requireIncidentNotDeleting, type CommandPrincipal } from "./trustedIncidentCommands";
 import { assertPrivateMediaObject, createPrivateMediaDownloadUrl, createPrivateMediaUploadUrl, isPrivateMediaConfigured, readPrivateMediaObject, scanPrivateMedia } from "./privateMediaStorage";
 
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const allowedKinds = new Set(["scene", "missing_person"]);
 
 function requireAccess(principal: CommandPrincipal, incident: Record<string, unknown>) {
+  requireIncidentNotDeleting(incident);
   if (principal.role === "admin" || incident.reporterUid === principal.uid) return;
-  if (principal.memberships.some(membership => membership.organizationId === incident.organizationId)) return;
+  if (principal.memberships.some(membership => membership.organizationId === incident.organizationId
+    && (!incident.jurisdictionId || !membership.jurisdictionId || membership.jurisdictionId === incident.jurisdictionId))) return;
   throw new CommandError("FORBIDDEN", "This incident is outside your media access scope.");
 }
 

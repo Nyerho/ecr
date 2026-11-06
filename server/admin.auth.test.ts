@@ -49,4 +49,13 @@ describe("admin.unlock", () => {
     const caller = appRouter.createCaller(ctx);
     await expect(caller.admin.unlock({ password: "not-the-admin-password" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
+
+  it("rejects an incorrect Unicode password without a timing-safe comparison error", async () => {
+    const { ctx } = createContext();
+    const caller = appRouter.createCaller(ctx);
+    const configuredPassword = process.env.ECR_ADMIN_PASSWORD ?? "admin123@";
+
+    await expect(caller.admin.unlock({ password: "é".repeat(configuredPassword.length) }))
+      .rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
 });

@@ -54,6 +54,7 @@ const HERO_MESSAGES = [
   "Get Help. Get Safe.",
   "Emergency Help, One Step Away",
 ] as const;
+const REPORT_REFERENCE_PATTERN = /^ECR-\d{4}-[A-Z0-9]+$/;
 
 const steps = [
   ["01", "Report", "Choose the emergency type and tell ECR what is happening."],
@@ -86,20 +87,27 @@ function trackingDate(value: unknown) {
 }
 
 function PublicReportTracker() {
-  const initialReference =
+  const suppliedReference =
     typeof window === "undefined"
       ? ""
       : (new URLSearchParams(window.location.search)
           .get("report")
-          ?.toUpperCase() ?? "");
-  const [input, setInput] = useState(initialReference);
+          ?.trim().toUpperCase() ?? "");
+  const initialReference = REPORT_REFERENCE_PATTERN.test(suppliedReference)
+    ? suppliedReference
+    : "";
+  const [input, setInput] = useState(suppliedReference);
   const [reference, setReference] = useState(initialReference);
+  const [trackingAttempt, setTrackingAttempt] = useState(0);
   const [incident, setIncident] = useState<PublicIncidentTracking | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    suppliedReference && !initialReference ? "Enter a valid report ID, for example ECR-2026-E823DD." : ""
+  );
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    setCopied(false);
     if (!reference) return;
     setIncident(null);
     setError("");
@@ -109,34 +117,46 @@ function PublicReportTracker() {
       tracked => {
         setIncident(tracked);
         setLoading(false);
-        if (!tracked)
-          setError("No public tracking record was found for that report ID.");
+        setError(tracked ? "" : "No public tracking record was found for that report ID.");
       },
       () => {
         setLoading(false);
         setError("This report cannot be tracked right now. Please try again.");
       }
     );
-  }, [reference]);
+  }, [reference, trackingAttempt]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 1600);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   function track(event: FormEvent) {
     event.preventDefault();
     const normalized = input.trim().toUpperCase();
-    if (!/^ECR-\d{4}-[A-Z0-9]+$/.test(normalized)) {
+    if (!REPORT_REFERENCE_PATTERN.test(normalized)) {
       setError(
         "Enter the report ID exactly as shown, for example ECR-2026-E823DD."
       );
+      setReference("");
       setIncident(null);
+      setLoading(false);
       return;
     }
     setReference(normalized);
+    setTrackingAttempt(attempt => attempt + 1);
   }
 
   async function copyReference() {
     if (!reference) return;
-    await navigator.clipboard?.writeText(reference);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(reference);
+      setCopied(true);
+    } catch {
+      setError("The report ID could not be copied. Select it above and copy it manually.");
+    }
   }
 
   return (
@@ -306,7 +326,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setContactsOpen(true)}
-              className="rounded-full bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/20 hover:-translate-y-0.5 hover:bg-rose-800"
+              className="emergency-call-trigger rounded-full bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/20 hover:-translate-y-0.5 hover:bg-rose-800"
             >
               SOS
             </button>
@@ -340,7 +360,7 @@ export default function Home() {
                   setContactsOpen(true);
                   setMenuOpen(false);
                 }}
-                className="rounded-xl bg-rose-700 px-3 py-2 text-left font-black text-white"
+                className="emergency-call-trigger rounded-xl bg-rose-700 px-3 py-2 text-left font-black text-white"
               >
                 SOS · Call local services
               </button>
@@ -423,14 +443,14 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setContactsOpen(true)}
-                  className="inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
+                  className="emergency-call-trigger inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
+                  <span className="emergency-call-badge grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
                     SOS
                   </span>
                   <span className="text-left">
                     <span className="block">Emergency call</span>
-                    <span className="block text-[11px] font-semibold text-rose-100">
+                    <span className="emergency-call-caption block text-[11px] font-semibold text-rose-100">
                       Choose an official service
                     </span>
                   </span>
@@ -574,7 +594,7 @@ export default function Home() {
               </p>
               <a
                 href="/app"
-                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]"
+                className="home-primary-action mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]"
               >
                 Explore the reporting flow <ArrowRight size={16} />
               </a>
@@ -633,7 +653,7 @@ export default function Home() {
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a
                 href="/app"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]"
+                className="home-primary-action inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]"
               >
                 Start a report <ArrowRight size={16} />
               </a>
@@ -641,7 +661,7 @@ export default function Home() {
                 href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-white/15"
+                className="home-secondary-action inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-white/15"
               >
                 <MessageCircle size={16} /> Join WhatsApp updates
               </a>
@@ -775,7 +795,7 @@ export default function Home() {
                     setPrivacyOpen(false);
                     setContactsOpen(true);
                   }}
-                  className="mt-3 inline-flex rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"
+                  className="emergency-call-trigger mt-3 inline-flex rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"
                 >
                   Open local contacts
                 </button>

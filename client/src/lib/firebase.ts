@@ -19,11 +19,13 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   limit,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -159,7 +161,7 @@ export async function ensureAnonymousFirebaseUser() {
   return credential.user;
 }
 
-export async function createReportIncident(input: Parameters<typeof createFirestoreIncident>[0]) {
+export async function createReportIncident(input: Parameters<typeof createFirestoreIncident>[0] & { commandKey?: string }) {
   if (!trustedCommandsEnabled) return createFirestoreIncident(input);
   const user = firebaseAuth?.currentUser ?? (await ensureAnonymousFirebaseUser());
   if (!trustedApiBaseUrl) {
@@ -169,7 +171,7 @@ export async function createReportIncident(input: Parameters<typeof createFirest
   const response = await fetch(`${trustedApiBaseUrl}/api/v1/incidents`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ ...input, commandKey: `web-${crypto.randomUUID()}` }),
+    body: JSON.stringify({ ...input, commandKey: input.commandKey || `web-${crypto.randomUUID()}` }),
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -179,6 +181,75 @@ export async function createReportIncident(input: Parameters<typeof createFirest
     throw error;
   }
   return result as { id: string; publicReference: string; replayed?: boolean };
+}
+
+export async function deleteReportIncident(incidentId: string): Promise<void> {
+  const user = requireAuth().currentUser;
+  if (!user) {
+    throw Object.assign(new Error("Sign in again before deleting a report."), { code: "unauthenticated" });
+  }
+  const id = incidentId.trim();
+  if (!id || id.includes("/")) {
+    throw Object.assign(new Error("This report has an invalid ID."), { code: "invalid-argument" });
+  }
+
+  if (trustedCommandsEnabled) {
+    if (!trustedApiBaseUrl) {
+      throw new Error("The trusted incident API is enabled but VITE_ECR_TRUSTED_API_URL is missing.");
+    }
+    const token = await user.getIdToken();
+    const response = await fetch(`${trustedApiBaseUrl}/api/v1/incidents/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw Object.assign(new Error(result?.error || "The report could not be deleted."), {
+        code: result?.code,
+        status: response.status,
+      });
+    }
+    if (result?.deleted !== true || result?.id !== id) {
+      throw Object.assign(new Error("The service did not confirm deletion. Refresh your reports before trying again."), { code: "failed-precondition" });
+    }
+    return;
+  }
+
+  const database = requireFirestore();
+  const incidentRef = doc(database, "incidents", id);
+  await runTransaction(database, async transaction => {
+    const incidentSnapshot = await transaction.get(incidentRef);
+    if (!incidentSnapshot.exists()) {
+      throw Object.assign(new Error("This report no longer exists. Refresh your reports."), { code: "not-found" });
+    }
+    const incident = incidentSnapshot.data();
+    if (incident.reporterUid !== user.uid) {
+      throw Object.assign(new Error("You can only delete reports you submitted."), { code: "permission-denied" });
+    }
+    if (typeof incident.publicReference !== "string" || !incident.publicReference.trim() || incident.publicReference.includes("/")) {
+      throw Object.assign(new Error("This report is missing a valid tracking reference. Contact ECR to remove it safely."), { code: "failed-precondition" });
+    }
+    const trackingRef = doc(database, "publicTracking", incident.publicReference);
+    // Keep both document reads in the transaction. A concurrent status update
+    // changes these documents, so Firestore retries this callback and refreshes
+    // the linked-message query before committing the deletion.
+    const [trackingSnapshot, chatSnapshot] = await Promise.all([
+      transaction.get(trackingRef),
+      getDocs(query(
+        collection(database, "chatMessages"),
+        where("publicReference", "==", incident.publicReference),
+        where("visibility", "==", "public"),
+        limit(500)
+      )),
+    ]);
+    const operationCount = 1 + (trackingSnapshot.exists() ? 1 : 0) + chatSnapshot.size;
+    if (operationCount > 500) {
+      throw Object.assign(new Error("This report has too many linked updates to delete safely here. Contact ECR for help removing it."), { code: "failed-precondition" });
+    }
+    transaction.delete(incidentRef);
+    if (trackingSnapshot.exists()) transaction.delete(trackingRef);
+    chatSnapshot.docs.forEach(message => transaction.delete(message.ref));
+  });
 }
 
 export async function transitionReportIncident(input: {
@@ -364,7 +435,7 @@ export const DEFAULT_EMERGENCY_CONTACTS: Array<
     area: "Delta State · DELSEAS",
     description: "For urgent medical transport and ambulance coordination.",
     numbers: ["112", "0704 100 8130", "0704 100 8131"],
-    telNumbers: ["+234112", "+2347041008130", "+2347041008131"],
+    telNumbers: ["112", "+2347041008130", "+2347041008131"],
     icon: "medical",
     tone: "border-rose-100 bg-rose-50/70 text-rose-900",
   },
@@ -544,21 +615,26 @@ export function trackPublicIncident(
   callback: (incident: PublicIncidentTracking | null) => void,
   onError: (error: unknown) => void
 ) {
-  const database = requireFirestore();
-  const trackingRef = doc(
-    database,
-    "publicTracking",
-    reference.trim().toUpperCase()
-  );
-  return onSnapshot(
-    trackingRef,
-    snapshot => {
-      callback(
-        snapshot.exists() ? (snapshot.data() as PublicIncidentTracking) : null
-      );
-    },
-    onError
-  );
+  try {
+    const database = requireFirestore();
+    const trackingRef = doc(
+      database,
+      "publicTracking",
+      reference.trim().toUpperCase()
+    );
+    return onSnapshot(
+      trackingRef,
+      snapshot => {
+        callback(
+          snapshot.exists() ? (snapshot.data() as PublicIncidentTracking) : null
+        );
+      },
+      onError
+    );
+  } catch (error) {
+    onError(error);
+    return () => undefined;
+  }
 }
 
 export async function ensurePublicTrackingRecord(incident: FirestoreIncident) {

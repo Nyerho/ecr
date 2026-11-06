@@ -432,6 +432,27 @@ button:hover .icon-orb {
   color: #ffb4bd;
 }
 
+/* Emergency actions keep a clear edge against the dark teal page. */
+.dark .emergency-call-trigger {
+  background: #9f1239;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px #fda4af, 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.dark .emergency-call-trigger:hover {
+  background: #881337;
+}
+.dark .emergency-call-badge {
+  background: #4c1025;
+  border-color: #fda4af;
+  color: #ffffff;
+}
+.dark .emergency-call-caption {
+  color: #fff1f2;
+}
+.dark .emergency-call-trigger:focus-visible {
+  outline-color: #ffd1d7;
+}
+
 /* Homepage dark mode: use an intentional near-black navigation and a
    deep blue-teal promise panel so the light text stays readable. */
 .dark .home-header {
@@ -496,6 +517,56 @@ button:hover .icon-orb {
 .dark .hero-pillar-icon {
   background: #17665f;
   color: #9af2cb;
+}
+
+/* Keep the response network and safety callout readable on dark surfaces. */
+.dark #network {
+  background: #102d36;
+}
+.dark #network .glass-surface {
+  background: #173b45;
+  border-color: #356574;
+}
+.dark #network h2,
+.dark #network h3,
+.dark #trust h2 {
+  color: #effffb;
+}
+.dark #network .text-slate-500,
+.dark #network .text-slate-600 {
+  color: #b9d5d1;
+}
+.dark #network .text-emerald-700 {
+  color: #7ee8bd;
+}
+.dark #trust > div {
+  background: #123f3d;
+  box-shadow: inset 0 0 0 1px #356f65, 0 18px 48px rgba(0, 10, 13, 0.24);
+}
+.dark #trust p {
+  color: #c8e4dd;
+}
+.dark #network .home-primary-action,
+.dark #trust .home-primary-action {
+  background: #65d6ad;
+  color: #08231f;
+}
+.dark #network .home-primary-action:hover,
+.dark #trust .home-primary-action:hover {
+  background: #9af2cb;
+}
+.dark #trust .home-secondary-action {
+  background: #1a4b48;
+  border-color: #79b9aa;
+  color: #effffb;
+}
+.dark #trust .home-secondary-action:hover {
+  background: #245f59;
+  border-color: #9af2cb;
+}
+.dark #network a:focus-visible,
+.dark #trust a:focus-visible {
+  outline-color: #9af2cb;
 }
 
 /* Dispatcher dark mode: keep the queue calm and operational, with distinct
@@ -906,6 +977,7 @@ button:hover .icon-orb {
 }
 .dark .citizen-shell .bg-amber-50 {
   background: #4a3a24;
+  color: #ffe5aa;
 }
 .dark .citizen-shell .text-slate-950,
 .dark .citizen-shell .text-slate-900,
@@ -954,6 +1026,41 @@ button:hover .icon-orb {
 .dark .citizen-shell .fixed.bottom-5 {
   background: #153541;
   border-color: #3b806f;
+}
+.dark .citizen-shell .report-delete-button,
+.dark .report-delete-dialog .report-delete-error {
+  background: #482934;
+  border-color: #bf7886;
+  color: #ffd1d7;
+}
+.dark .citizen-shell .report-delete-button:hover {
+  background: #663747;
+  color: #fff1f2;
+}
+.dark .report-delete-dialog {
+  background: #153541;
+  border-color: #3b7180;
+  color: #e9faf5;
+}
+.dark .report-delete-dialog .report-delete-cancel {
+  background: #102d37;
+  border-color: #79b9aa;
+  color: #effffb;
+}
+.dark .report-delete-dialog .report-delete-cancel:hover {
+  background: #245f59;
+}
+.dark .report-delete-dialog .report-delete-confirm {
+  background: #9f1239;
+  color: #ffffff;
+}
+.dark .report-delete-dialog .report-delete-confirm:hover {
+  background: #881337;
+}
+.dark .citizen-shell .report-delete-button:focus-visible,
+.dark .report-delete-dialog button:focus-visible {
+  outline: 3px solid #9af2cb;
+  outline-offset: 3px;
 }
 
 .dark .chatter-shell {
@@ -1118,11 +1225,96 @@ button:hover .icon-orb {
   background: #102d37;
   color: #d7eeea;
 }
+.dark .emergency-contacts-dialog .emergency-contacts-label {
+  background: #174c45;
+  color: #9af2cb;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card {
+  background: #102d37;
+  border-color: #3b7180;
+  color: #effffb;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card[data-tone="rose"] {
+  background: #482934;
+  border-color: #865060;
+  color: #ffd1d7;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card[data-tone="blue"] {
+  background: #15364f;
+  border-color: #416d8f;
+  color: #d4eaff;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card[data-tone="orange"] {
+  background: #4a3025;
+  border-color: #8a6247;
+  color: #ffe2c2;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card[data-tone="emerald"] {
+  background: #174c45;
+  border-color: #3b806f;
+  color: #c8f4e4;
+}
+.dark .emergency-contacts-dialog .emergency-contact-card[data-tone="teal"] {
+  background: #164449;
+  border-color: #3b7b80;
+  color: #c5f3ed;
+}
+.dark .emergency-contacts-dialog .emergency-contact-icon {
+  background: #102d37;
+}
+.dark .emergency-contacts-dialog .emergency-contact-detail {
+  color: #d7e8e4;
+  opacity: 1;
+}
+.dark .emergency-contacts-dialog .emergency-contact-phone,
+.dark .emergency-contacts-dialog .emergency-community-secondary {
+  background: #102d37;
+  color: #effffb;
+  box-shadow: inset 0 0 0 1px #79b9aa;
+}
+.dark .emergency-contacts-dialog .emergency-contact-phone:hover,
+.dark .emergency-contacts-dialog .emergency-community-secondary:hover,
+.dark .emergency-contacts-dialog .emergency-dialog-close:hover {
+  background: #245f59;
+  color: #effffb;
+}
+.dark .emergency-contacts-dialog .emergency-community-panel {
+  background: #102d37;
+  color: #effffb;
+  box-shadow: inset 0 0 0 1px #3b7180;
+}
+.dark .emergency-contacts-dialog .emergency-community-copy {
+  color: #d7e8e4;
+}
+.dark .emergency-contacts-dialog .emergency-community-primary {
+  background: #65d6ad;
+  color: #08231f;
+}
+.dark .emergency-contacts-dialog .emergency-community-primary:hover {
+  background: #9af2cb;
+}
+.dark .emergency-contacts-dialog .emergency-dialog-close {
+  background: #102d37;
+  color: #dff8f1;
+}
+.dark .emergency-contacts-dialog a:focus-visible,
+.dark .emergency-contacts-dialog button:focus-visible {
+  outline-color: #9af2cb;
+}
 
 .dark .incident-photo-gallery,
-.dark .incident-photo-picker {
+.dark .incident-photo-picker,
+.dark .incident-photo-draft-summary {
   background: #123f4b;
   border-color: #2d6570;
+}
+.dark .incident-photo-picker .photo-draft-title,
+.dark .incident-photo-draft-summary .photo-draft-title {
+  color: #effffb;
+}
+.dark .incident-photo-picker .photo-draft-copy,
+.dark .incident-photo-draft-summary .photo-draft-copy {
+  color: #d7eeea;
 }
 .dark .incident-photo-gallery .bg-white,
 .dark .incident-photo-picker .bg-white {

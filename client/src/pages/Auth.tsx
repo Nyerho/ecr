@@ -153,9 +153,10 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                   </span>
                   <span className="relative mt-2 block">
                     <input
-                      required
+                      required={!resetMode}
+                      disabled={resetMode}
                       type={showPassword ? "text" : "password"}
-                      minLength={8}
+                      minLength={isRegister ? 8 : undefined}
                       value={password}
                       onChange={event => setPassword(event.target.value)}
                       autoComplete={
@@ -205,7 +206,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                 </Button>
               </form>
               {!isRegister && (
-                <button type="button" onClick={() => { setResetMode(value => !value); setError(""); setResetSent(false); }} className="mt-4 block w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900">
+                <button type="button" disabled={isSubmitting} onClick={() => { setResetMode(value => !value); setError(""); setResetSent(false); }} className="mt-4 block w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900">
                   {resetMode ? "Back to sign in" : "Forgot your password?"}
                 </button>
               )}

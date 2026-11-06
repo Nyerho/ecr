@@ -16,8 +16,11 @@ import {
   type PendingReport,
 } from "@/lib/localOfflineReports";
 import { type IncidentPhotoDraft } from "@/lib/localIncidentPhotos";
+import { loadReportPhotoDrafts, saveReportPhotoDrafts } from "@/lib/localReportPhotoDrafts";
+import { loadReportCommandKey, newReportCommandKey } from "@/lib/reportCommandKey";
 import {
   createReportIncident,
+  deleteReportIncident,
   ensureAnonymousFirebaseUser,
   firebaseConfigured,
   reportSubmissionMessage,
@@ -33,6 +36,16 @@ import FloatingTikTok from "@/components/FloatingTikTok";
 import IncidentPhotoPicker from "@/components/IncidentPhotoPicker";
 import IncidentPhotoGallery from "@/components/IncidentPhotoGallery";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Activity,
@@ -62,6 +75,7 @@ import {
   Siren,
   Smartphone,
   Sparkles,
+  Trash2,
   UsersRound,
   X,
 } from "lucide-react";
@@ -355,6 +369,11 @@ export default function Home() {
   const [localIncidents, setLocalIncidents] = useState<IncidentCard[]>([]);
   const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
   const [localLifecycleMessage, setLocalLifecycleMessage] = useState("");
+  const [reportToDelete, setReportToDelete] = useState<IncidentCard | null>(null);
+  const [isDeletingReport, setIsDeletingReport] = useState(false);
+  const deletingReport = useRef(false);
+  const [deleteReportError, setDeleteReportError] = useState("");
+  const [visibleReportCount, setVisibleReportCount] = useState(5);
   const [showMenu, setShowMenu] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
@@ -373,8 +392,13 @@ export default function Home() {
   );
   const [form, setForm] = useState<ReportForm>(emptyForm);
   const [photoDrafts, setPhotoDrafts] = useState<IncidentPhotoDraft[]>([]);
+  const [photoDraftStorage, setPhotoDraftStorage] = useState<"saving" | "saved" | "unavailable">("saved");
+  const photoDraftWrite = useRef<Promise<void>>(Promise.resolve());
+  const photoDraftVersion = useRef(0);
   const [savedReportDraft, setSavedReportDraft] = useState<{ reportStep: "category" | "details" | "location" | "review"; selectedCategory: CategoryKey | null; form: ReportForm } | null>(null);
   const [pendingReports, setPendingReports] = useState<PendingReport[]>([]);
+  const [retryingReportIds, setRetryingReportIds] = useState<string[]>([]);
+  const retryingReports = useRef(new Set<string>());
   const [view, setView] = useState<"citizen" | "operations">("citizen");
   const [adminPromptOpen, setAdminPromptOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -383,6 +407,7 @@ export default function Home() {
   const seenIncidentIds = useRef<Set<number>>(new Set());
   const hasInitialOperationsSnapshot = useRef(false);
   const previousReportStatuses = useRef<Record<string, string>>({});
+  const reportCommandKey = useRef<string | null>(null);
   const reportDraftStorageKey = "ecr-report-draft";
 
   const isAdmin = user?.role === "admin";
@@ -476,6 +501,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    loadReportPhotoDrafts().then(photos => {
+      if (active && photoDraftVersion.current === 0) setPhotoDrafts(photos);
+    }).catch(() => {
+      if (active && photoDraftVersion.current === 0) setPhotoDraftStorage("unavailable");
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     setPendingReports(loadPendingReports());
     const refresh = () => setPendingReports(loadPendingReports());
     window.addEventListener("online", refresh);
@@ -517,6 +552,12 @@ export default function Home() {
   }, [user]);
 
   useEffect(() => {
+    setReportToDelete(null);
+    setDeleteReportError("");
+    setVisibleReportCount(5);
+  }, [user?.uid]);
+
+  useEffect(() => {
     if (!localIncidents.length) return;
     const previous = previousReportStatuses.current;
     localIncidents.forEach(incident => {
@@ -548,7 +589,7 @@ export default function Home() {
   }, [operations.data, soundEnabled]);
 
   function openReport() {
-    setPhotoDrafts([]);
+    reportCommandKey.current = newReportCommandKey();
     setLocationMessage("");
     setReportOpen(true);
     setReportStep("category");
@@ -563,12 +604,17 @@ export default function Home() {
   }
 
   function discardSavedReport() {
-    window.localStorage.removeItem(reportDraftStorageKey);
+    try {
+      window.localStorage.removeItem(reportDraftStorageKey);
+    } catch {
+      // A cleanup failure must not turn a confirmed submission into a failure.
+    }
     setSavedReportDraft(null);
+    reportCommandKey.current = newReportCommandKey();
   }
 
   function startReportWithCategory(categoryKey: CategoryKey) {
-    setPhotoDrafts([]);
+    reportCommandKey.current = newReportCommandKey();
     setLocationMessage("");
     setSelectedCategory(categoryKey);
     setReportOpen(true);
@@ -585,6 +631,19 @@ export default function Home() {
       return;
     }
     window.location.href = "/admin";
+  }
+
+  function updatePhotoDrafts(photos: IncidentPhotoDraft[]) {
+    const version = ++photoDraftVersion.current;
+    setPhotoDrafts(photos);
+    setPhotoDraftStorage("saving");
+    photoDraftWrite.current = photoDraftWrite.current.catch(() => undefined)
+      .then(() => saveReportPhotoDrafts(photos))
+      .then(() => {
+        if (photoDraftVersion.current === version) setPhotoDraftStorage("saved");
+      }).catch(() => {
+        if (photoDraftVersion.current === version) setPhotoDraftStorage("unavailable");
+      });
   }
 
   function useDeviceLocation() {
@@ -627,6 +686,7 @@ export default function Home() {
     }
     setIsSubmittingLocal(true);
     const payload = {
+      commandKey: reportCommandKey.current ?? (reportCommandKey.current = loadReportCommandKey()),
       category: selectedCategory,
       description: form.description.trim(),
       reporterName: form.reporterName.trim() || undefined,
@@ -656,21 +716,22 @@ export default function Home() {
       setReportStep("category");
       setSelectedCategory(null);
       setForm(emptyForm());
-      setPhotoDrafts([]);
-      window.localStorage.removeItem(reportDraftStorageKey);
-      setSavedReportDraft(null);
+      discardSavedReport();
     } catch (error) {
       if (isRetryableReportError(error)) {
-        const pending = queuePendingReport(payload, reportSubmissionMessage(error));
+        try {
+          queuePendingReport(payload, reportSubmissionMessage(error));
+        } catch {
+          toast.error("Your report was not sent and this browser could not save it. Keep this form open and try again when connected.");
+          return;
+        }
         setPendingReports(loadPendingReports());
         setReportOpen(false);
         toast.warning("No connection. Your report is saved on this device and can be retried when you are online.");
         setReportStep("category");
         setSelectedCategory(null);
         setForm(emptyForm());
-        window.localStorage.removeItem(reportDraftStorageKey);
-        setSavedReportDraft(null);
-        void pending;
+        discardSavedReport();
       } else {
         toast.error(reportSubmissionMessage(error));
       }
@@ -680,19 +741,34 @@ export default function Home() {
   }
 
   async function retryPendingReport(pending: PendingReport) {
-    updatePendingReport(pending.id, { attempts: pending.attempts + 1, lastError: "Retrying…" });
-    setPendingReports(loadPendingReports());
+    if (retryingReports.current.has(pending.id)) return;
+    retryingReports.current.add(pending.id);
+    setRetryingReportIds(Array.from(retryingReports.current));
     try {
-      const reporter = user ?? (await ensureAnonymousFirebaseUser());
-      const result = await createReportIncident({ reporterUid: reporter.uid, ...pending });
-      removePendingReport(pending.id);
+      const commandKey = pending.commandKey || `web-queued-${pending.id}`;
+      updatePendingReport(pending.id, { attempts: pending.attempts + 1, lastError: "Retrying…", commandKey });
       setPendingReports(loadPendingReports());
+      const reporter = user ?? (await ensureAnonymousFirebaseUser());
+      const result = await createReportIncident({ reporterUid: reporter.uid, ...pending, commandKey });
+      try {
+        removePendingReport(pending.id);
+      } catch {
+        toast.warning("The report was submitted, but this browser could not remove its saved copy. Do not retry that copy.");
+      }
+      setPendingReports(current => current.filter(report => report.id !== pending.id));
       setReportReceipt({ reference: result.publicReference, location: pending.locationLabel || "Location shared privately" });
       toast.success(`Queued report submitted (${result.publicReference})`);
     } catch (error) {
-      updatePendingReport(pending.id, { lastError: reportSubmissionMessage(error) });
+      try {
+        updatePendingReport(pending.id, { lastError: reportSubmissionMessage(error) });
+      } catch {
+        // Keep the existing queued copy if retry metadata cannot be persisted.
+      }
       setPendingReports(loadPendingReports());
       toast.error(isRetryableReportError(error) ? "Still offline. Your report remains safely queued." : reportSubmissionMessage(error));
+    } finally {
+      retryingReports.current.delete(pending.id);
+      setRetryingReportIds(Array.from(retryingReports.current));
     }
   }
 
@@ -726,6 +802,27 @@ export default function Home() {
 
   function dismissAlerts() {
     setNewIncidentIds([]);
+  }
+
+  async function deleteOwnReport() {
+    if (!reportToDelete?.firestoreId || !user || deletingReport.current) return;
+    const target = reportToDelete;
+    const incidentId = reportToDelete.firestoreId;
+    deletingReport.current = true;
+    setIsDeletingReport(true);
+    setDeleteReportError("");
+    try {
+      await deleteReportIncident(incidentId);
+      setLocalIncidents(current => current.filter(incident => incident.firestoreId !== incidentId));
+      setReportReceipt(current => current?.reference === target.publicReference ? null : current);
+      setReportToDelete(null);
+      toast.success("Report deleted.");
+    } catch (error) {
+      setDeleteReportError(error instanceof Error ? error.message : "The report could not be deleted. Please try again.");
+    } finally {
+      deletingReport.current = false;
+      setIsDeletingReport(false);
+    }
   }
 
   return (
@@ -869,14 +966,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setContactsOpen(true)}
-                    className="inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
+                    className="emergency-call-trigger inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
                   >
-                    <span className="grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
+                    <span className="emergency-call-badge grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
                       SOS
                     </span>
                     <span className="text-left">
                       <span className="block">Emergency call</span>
-                      <span className="block text-[11px] font-semibold text-rose-100">
+                      <span className="emergency-call-caption block text-[11px] font-semibold text-rose-100">
                         Choose an official service
                       </span>
                     </span>
@@ -1088,9 +1185,9 @@ export default function Home() {
                     Loading your reports…
                   </div>
                 ) : mine.data?.length ? (
-                  mine.data.slice(0, 5).map(incident => (
+                  mine.data.slice(0, visibleReportCount).map(incident => (
                     <div
-                      key={incident.id}
+                      key={incident.firestoreId ?? incident.id}
                       className="glass-tile flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5"
                     >
                       <div className="flex items-start gap-4">
@@ -1122,12 +1219,30 @@ export default function Home() {
                           ) : null}
                         </div>
                       </div>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                        Priority:{" "}
-                        <span className="capitalize text-slate-700">
-                          {incident.priority}
+                      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 sm:flex-col sm:items-end">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
+                          Priority:{" "}
+                          <span className="capitalize text-slate-700">
+                            {incident.priority}
+                          </span>
                         </span>
-                      </span>
+                        {incident.firestoreId && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="report-delete-button border-rose-200 text-rose-700 hover:bg-rose-50"
+                            disabled={isDeletingReport}
+                            aria-label={`Delete report ${incident.publicReference}`}
+                            onClick={() => {
+                              setDeleteReportError("");
+                              setReportToDelete(incident);
+                            }}
+                          >
+                            <Trash2 size={14} /> Delete report
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -1138,8 +1253,29 @@ export default function Home() {
                 )}
               </div>
             )}
+            {isAuthenticated && mine.data.length > visibleReportCount && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4"
+                onClick={() => setVisibleReportCount(count => count + 5)}
+              >
+                Show more reports
+              </Button>
+            )}
           </section>
         </main>
+      )}
+
+      {!reportOpen && photoDrafts.length > 0 && (
+        <section id="local-photo-drafts" className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8" aria-label="Saved local photo drafts">
+          <h2 className="mb-2 text-lg font-black">Your local photo drafts</h2>
+          <p className="mb-3 text-sm text-slate-600">These images were not sent to ECR or responders. You can download or remove them below.</p>
+          <IncidentPhotoPicker category={selectedCategory || "scene"} photos={photoDrafts} onChange={updatePhotoDrafts} />
+          <p role="status" className="mt-2 text-xs font-semibold text-slate-600">
+            {photoDraftStorage === "saved" ? "Photo drafts are saved in this browser." : photoDraftStorage === "saving" ? "Saving photo drafts on this device…" : "This browser could not save your photo drafts. Keep this page open and download them before leaving."}
+          </p>
+        </section>
       )}
 
       <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8 lg:pb-14">
@@ -1342,6 +1478,11 @@ export default function Home() {
               ECR has saved your report. Use this reference when following up
               with the ECR team or checking your incident history.
             </p>
+            {photoDrafts.length > 0 && (
+              <p role="status" className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Your photos were not sent with this report. {photoDraftStorage === "saved" ? "They remain saved only in this browser." : "Keep this page open until your photo drafts are saved or downloaded."}
+              </p>
+            )}
             <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-center">
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
                 Report reference
@@ -1384,7 +1525,7 @@ export default function Home() {
             {pendingReports.map(pending => (
               <div key={pending.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 text-xs">
                 <span className="min-w-0 truncate font-semibold text-amber-950">{pending.category.replaceAll("_", " ")} · {new Date(pending.queuedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                <Button onClick={() => retryPendingReport(pending)} variant="outline" className="shrink-0 rounded-lg border-amber-300 text-xs text-amber-900">Retry</Button>
+                <Button disabled={retryingReportIds.includes(pending.id)} onClick={() => retryPendingReport(pending)} variant="outline" className="shrink-0 rounded-lg border-amber-300 text-xs text-amber-900">{retryingReportIds.includes(pending.id) ? "Retrying…" : "Retry"}</Button>
               </div>
             ))}
           </div>
@@ -1464,8 +1605,13 @@ export default function Home() {
                 <IncidentPhotoPicker
                   category={selectedCategory ?? "other"}
                   photos={photoDrafts}
-                  onChange={setPhotoDrafts}
+                  onChange={updatePhotoDrafts}
                 />
+                {photoDrafts.length > 0 && photoDraftStorage !== "saved" && (
+                  <p role="status" className="text-xs font-semibold text-slate-600">
+                    {photoDraftStorage === "saving" ? "Saving local photo drafts…" : "Photo drafts could not be saved. Download them before leaving this page."}
+                  </p>
+                )}
                 <label className="block">
                   <span className="text-sm font-black">What happened?</span>
                   <textarea
@@ -1711,12 +1857,12 @@ export default function Home() {
                   </div>
                 </div>
                 {photoDrafts.length > 0 && (
-                  <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
-                    <p className="text-sm font-black text-cyan-950">
+                  <div className="incident-photo-draft-summary rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
+                    <p className="photo-draft-title text-sm font-black text-cyan-950">
                       {photoDrafts.length} photo
-                      {photoDrafts.length === 1 ? "" : "s"} attached
+                      {photoDrafts.length === 1 ? "" : "s"} kept as local drafts
                     </p>
-                    <ul className="mt-2 space-y-1 text-xs text-cyan-900">
+                    <ul className="photo-draft-copy mt-2 space-y-1 text-xs text-cyan-900">
                       {photoDrafts.map(photo => (
                         <li key={photo.id}>
                           {photo.kind === "missing_person"
@@ -1728,7 +1874,7 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-2 text-[11px] text-cyan-900/70">
+                    <p className="photo-draft-copy mt-2 text-[11px] text-cyan-900/70">
                       Photos are optional reference material and do not affect
                       report submission.
                     </p>
@@ -1763,6 +1909,44 @@ export default function Home() {
           </div>
         </div>
       )}
+      <AlertDialog
+        open={Boolean(reportToDelete)}
+        onOpenChange={open => {
+          if (!open && !deletingReport.current) {
+            setReportToDelete(null);
+            setDeleteReportError("");
+          }
+        }}
+      >
+        <AlertDialogContent className="report-delete-dialog rounded-3xl border-slate-200 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this report?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6 text-slate-600">
+              This permanently removes {reportToDelete?.publicReference}, its public tracking record, and its public updates. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteReportError && (
+            <p role="alert" className="report-delete-error rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {deleteReportError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel className="report-delete-cancel" disabled={isDeletingReport}>
+              Keep report
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="report-delete-confirm bg-rose-700 text-white hover:bg-rose-800"
+              disabled={isDeletingReport}
+              onClick={event => {
+                event.preventDefault();
+                void deleteOwnReport();
+              }}
+            >
+              <Trash2 size={15} /> {isDeletingReport ? "Deleting…" : "Delete report"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <DiagnosticsPanel
         open={diagnosticsOpen}
         onClose={() => setDiagnosticsOpen(false)}

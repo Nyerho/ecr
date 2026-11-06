@@ -67,6 +67,12 @@ export class CommandError extends Error {
   }
 }
 
+export function requireIncidentNotDeleting(incident: Record<string, unknown>) {
+  if (incident.deletionPending === true) {
+    throw new CommandError("CONFLICT", "This report is being deleted and can no longer be changed.");
+  }
+}
+
 function idempotencyDocumentId(uid: string, commandKey: string) {
   return createHash("sha256").update(`${uid}:${commandKey}`).digest("hex");
 }
@@ -235,7 +241,10 @@ export async function createTrustedIncident(input: {
       const previous = existing.data() ?? {};
       if (typeof previous.incidentId === "string") {
         const previousIncident = await transaction.get(database.collection("incidents").doc(previous.incidentId));
-        if (previousIncident.exists) return { id: previousIncident.id, publicReference: previousIncident.data()?.publicReference, replayed: true };
+        if (previousIncident.exists) {
+          requireIncidentNotDeleting(previousIncident.data() ?? {});
+          return { id: previousIncident.id, publicReference: previousIncident.data()?.publicReference, replayed: true };
+        }
       }
       throw new CommandError("CONFLICT", "The idempotency key has already been used.");
     }
@@ -325,6 +334,7 @@ export async function transitionTrustedIncident(input: {
     if (!canAccessIncident(input.principal, incident)) {
       throw new CommandError("FORBIDDEN", "This incident is outside your organization or assignment scope.");
     }
+    requireIncidentNotDeleting(incident);
     const currentStatus = String(incident.status ?? "submitted");
     if (!isAllowedIncidentTransition(currentStatus, input.nextStatus)) {
       throw new CommandError("INVALID_ARGUMENT", `Cannot transition an incident from ${currentStatus} to ${input.nextStatus}.`);
@@ -416,6 +426,7 @@ export async function assignTrustedIncident(input: {
     if (!snapshot.exists) throw new CommandError("NOT_FOUND", "Incident not found.");
     const incident = snapshot.data() ?? {};
     if (!canAccessIncident(input.principal, incident)) throw new CommandError("FORBIDDEN", "This incident is outside your assignment scope.");
+    requireIncidentNotDeleting(incident);
     if (!["received", "triaged", "escalated"].includes(String(incident.status))) {
       throw new CommandError("INVALID_ARGUMENT", "Only received, triaged, or escalated incidents can be assigned.");
     }
@@ -439,8 +450,10 @@ export async function assignTrustedIncident(input: {
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(incidentRef, {
+      organizationId,
       assignedOrganizationId: organizationId,
       assignedResponderUid: responderUid,
+      activeAssignmentId: assignmentRef.id,
       status: "assigned",
       version: Number(incident.version ?? 1) + 1,
       events: FieldValue.arrayUnion(event),
@@ -521,6 +534,13 @@ export async function respondToTrustedAssignment(input: {
     const incidentSnapshot = await transaction.get(incidentRef);
     if (!incidentSnapshot.exists) throw new CommandError("NOT_FOUND", "Assigned incident not found.");
     const incident = incidentSnapshot.data() ?? {};
+    requireIncidentNotDeleting(incident);
+    if (incident.status !== "assigned"
+      || incident.assignedResponderUid !== input.principal.uid
+      || incident.assignedOrganizationId !== assignment.organizationId
+      || (incident.activeAssignmentId && incident.activeAssignmentId !== assignmentSnapshot.id)) {
+      throw new CommandError("CONFLICT", "The incident is no longer awaiting this assignment response.");
+    }
     const nextAssignmentStatus = decision === "accept" ? "accepted" : "declined";
     const nextIncidentStatus = decision === "accept" ? "responding" : "escalated";
     const event = {
@@ -543,6 +563,9 @@ export async function respondToTrustedAssignment(input: {
 
 export async function expireStaleAssignments(principal: CommandPrincipal, staleAfterMinutes = 10) {
   requireOperationalPrincipal(principal);
+  if (typeof staleAfterMinutes !== "number" || !Number.isFinite(staleAfterMinutes) || staleAfterMinutes <= 0) {
+    throw new CommandError("INVALID_ARGUMENT", "Assignment expiry must be a positive number of minutes.");
+  }
   const database = getFirebaseFirestore();
   const cutoff = Date.now() - staleAfterMinutes * 60_000;
   const snapshot = await database.collection("assignments").where("status", "==", "offered").limit(100).get();
@@ -552,13 +575,18 @@ export async function expireStaleAssignments(principal: CommandPrincipal, staleA
     const createdAt = assignment.createdAt?.toDate?.()?.getTime?.() ?? 0;
     if (!createdAt || createdAt > cutoff) continue;
     const incidentRef = database.collection("incidents").doc(String(assignment.incidentId));
-    await database.runTransaction(async transaction => {
+    const didExpire = await database.runTransaction(async transaction => {
       const currentAssignment = await transaction.get(assignmentSnapshot.ref);
       if (!currentAssignment.exists || currentAssignment.data()?.status !== "offered") return;
       const incidentSnapshot = await transaction.get(incidentRef);
       const incident = incidentSnapshot.data() ?? {};
+      if (!canAccessIncident(principal, incident)) return;
+      if (incident.deletionPending === true) return;
       transaction.update(assignmentSnapshot.ref, { status: "expired", version: 2, expiredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
-      if (incidentSnapshot.exists && incident.status === "assigned") {
+      if (incidentSnapshot.exists && incident.status === "assigned"
+        && incident.assignedResponderUid === assignment.responderUid
+        && incident.assignedOrganizationId === assignment.organizationId
+        && (!incident.activeAssignmentId || incident.activeAssignmentId === assignmentSnapshot.id)) {
         const event = { label: "Responder assignment expired", actorUid: principal.uid, previousValue: "assigned", newValue: "escalated", createdAt: new Date().toISOString() };
         transaction.update(incidentRef, { status: "escalated", version: Number(incident.version ?? 1) + 1, events: FieldValue.arrayUnion(event), updatedAt: FieldValue.serverTimestamp() });
         transaction.set(database.collection("publicTracking").doc(String(incident.publicReference)), safeTrackingProjection({ ...incident, status: "escalated", events: [...(Array.isArray(incident.events) ? incident.events : []), event] }), { merge: true });
@@ -566,8 +594,9 @@ export async function expireStaleAssignments(principal: CommandPrincipal, staleA
       transaction.create(database.collection("incidentEvents").doc(), { incidentId: assignment.incidentId, type: "assignment_expired", assignmentId: assignmentSnapshot.id, actorUid: principal.uid, createdAt: FieldValue.serverTimestamp() });
       transaction.create(database.collection("auditEvents").doc(), { action: "incident.assignment_expired", actorUid: principal.uid, resourceType: "assignment", resourceId: assignmentSnapshot.id, result: "success", createdAt: FieldValue.serverTimestamp() });
       transaction.create(database.collection("notificationDeliveries").doc(), { type: "assignment_escalated", incidentId: assignment.incidentId, assignmentId: assignmentSnapshot.id, recipientUid: assignment.offeredBy, status: "queued", attempts: 0, maxAttempts: 3, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
-      expired += 1;
+      return true;
     });
+    if (didExpire) expired += 1;
   }
   return { expired };
 }

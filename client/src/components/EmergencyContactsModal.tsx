@@ -9,8 +9,10 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toDialablePhoneNumber } from "@/lib/phoneNumbers";
 import {
   DEFAULT_EMERGENCY_CONTACTS,
+  firebaseConfigured,
   subscribeToEmergencyContacts,
   type EmergencyContactRecord,
 } from "@/lib/firebase";
@@ -41,10 +43,10 @@ export default function EmergencyContactsModal({
 
   useEffect(() => {
     if (!open) return;
-    const stop = subscribeToEmergencyContacts(
+    const stop = firebaseConfigured ? subscribeToEmergencyContacts(
       contacts => setRemoteContacts(contacts),
       () => setRemoteContacts(null)
-    );
+    ) : () => {};
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -81,7 +83,7 @@ export default function EmergencyContactsModal({
       >
         <div className="flex items-start justify-between gap-5">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-800">
+            <span className="emergency-contacts-label inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-800">
               <Phone size={13} /> Local contacts
             </span>
             <h2
@@ -99,7 +101,7 @@ export default function EmergencyContactsModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="emergency-dialog-close rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             aria-label="Close emergency contacts dialog"
           >
             <X size={20} />
@@ -118,41 +120,40 @@ export default function EmergencyContactsModal({
             const Icon = iconForContact[contact.icon] ?? Phone;
             const telNumbers =
               contact.telNumbers ??
-              contact.numbers.map(number =>
-                `+234${number.replace(/\D/g, "").replace(/^0/, "")}`
-              );
+              contact.numbers.map(toDialablePhoneNumber);
             return (
               <article
                 key={contact.id ?? contact.name}
-                className={`rounded-2xl border p-4 ${contact.tone}`}
+                className={`emergency-contact-card rounded-2xl border p-4 ${contact.tone}`}
+                data-tone={contact.tone.match(/\bbg-(rose|blue|orange|emerald|teal)-/)?.[1]}
               >
                 <div className="flex items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/80">
+                  <span className="emergency-contact-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/80">
                     <Icon size={19} />
                   </span>
                   <div>
                     <h3 className="font-black">{contact.name}</h3>
-                    <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold opacity-70">
+                    <p className="emergency-contact-detail mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold opacity-70">
                       <MapPin size={12} /> {contact.area}
                     </p>
                   </div>
                 </div>
-                <p className="mt-3 text-xs leading-5 opacity-80">
+                <p className="emergency-contact-detail mt-3 text-xs leading-5 opacity-80">
                   {contact.description}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {contact.numbers.map((number, numberIndex) => (
                     <a
                       key={`${contact.id ?? contact.name}-${number}`}
-                      href={`tel:${telNumbers[numberIndex]}`}
-                      className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                      href={`tel:${toDialablePhoneNumber(telNumbers[numberIndex] ?? number)}`}
+                      className="emergency-contact-phone inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <Phone size={13} /> {number}
                     </a>
                   ))}
                 </div>
                 {index === 3 && (
-                  <p className="mt-3 text-[10px] leading-4 opacity-60">
+                  <p className="emergency-contact-detail mt-3 text-[10px] leading-4 opacity-60">
                     Hospital phone number from a public facility directory;
                     confirm at deployment review.
                   </p>
@@ -167,12 +168,12 @@ export default function EmergencyContactsModal({
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-[#063f3d] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+        <div className="emergency-community-panel mt-6 flex flex-col gap-3 rounded-2xl bg-[#063f3d] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <UsersRound className="mt-0.5 shrink-0 text-emerald-300" size={20} />
             <div>
               <h3 className="font-black">Need community help too?</h3>
-              <p className="mt-1 text-xs leading-5 text-emerald-50/75">
+              <p className="emergency-community-copy mt-1 text-xs leading-5 text-emerald-50/75">
                 Raise an ECR alert after contacting the right authority. Verified
                 responders may be able to provide first aid, directions,
                 transport support, or a safe handoff.
@@ -187,7 +188,7 @@ export default function EmergencyContactsModal({
                   onClose();
                   onReport();
                 }}
-                className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#13b981] px-4 py-3 text-xs font-black text-[#022c2b] hover:bg-[#34d399]"
+                className="emergency-community-primary inline-flex shrink-0 items-center justify-center rounded-xl bg-[#13b981] px-4 py-3 text-xs font-black text-[#022c2b] hover:bg-[#34d399]"
               >
                 Raise an ECR alert
               </button>
@@ -196,7 +197,7 @@ export default function EmergencyContactsModal({
               href={WHATSAPP_REPORT_CHAT}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-black text-white hover:bg-[#1ebe5d]"
+              className="emergency-community-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-black text-white hover:bg-[#1ebe5d]"
             >
               <MessageCircle size={14} /> WhatsApp report chat
             </a>
@@ -204,7 +205,7 @@ export default function EmergencyContactsModal({
               href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-black text-white ring-1 ring-white/20 hover:bg-white/15"
+              className="emergency-community-secondary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-black text-white ring-1 ring-white/20 hover:bg-white/15"
             >
               <MessageCircle size={14} /> Channel updates
             </a>
@@ -215,7 +216,7 @@ export default function EmergencyContactsModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-200"
+            className="emergency-dialog-close rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-200"
           >
             Close
           </button>
