@@ -101,6 +101,63 @@ describe.skipIf(!enabled)("Firestore client authorization rules", () => {
     expect((await getFirebaseFirestore().collection("chatMessages").doc(messageId).get()).exists).toBe(true);
   });
 
+  it.each([
+    ["comment", "public"],
+    ["comment", "hidden"],
+    ["alert", "public"],
+    ["alert", "hidden"],
+    ["admin_update", "public"],
+    ["admin_update", "hidden"],
+  ])("allows an active administrator to delete another author's %s message with %s visibility", async (kind, visibility) => {
+    const messageId = `rules-admin-deletes-${kind}-${visibility}`;
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    const message = getFirebaseFirestore().collection("chatMessages").doc(messageId);
+    await message.set({ authorUid: citizen.localId, kind, visibility, text: "An update removed by an administrator." });
+
+    const deleted = await deleteDocuments(admin, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(200);
+    expect((await message.get()).exists).toBe(false);
+  });
+
+  it("allows an active administrator to delete a hidden legacy message without an author", async () => {
+    const messageId = "rules-admin-deletes-legacy-message";
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    const message = getFirebaseFirestore().collection("chatMessages").doc(messageId);
+    await message.set({ visibility: "hidden", text: "A legacy community update." });
+
+    const deleted = await deleteDocuments(admin, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(200);
+    expect((await message.get()).exists).toBe(false);
+  });
+
+  it("rejects an inactive administrator deleting another author's message", async () => {
+    const inactiveAdmin = await createUser();
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    const database = getFirebaseFirestore();
+    await database.collection("admins").doc(inactiveAdmin.localId).set({ active: false });
+    const messageId = "rules-inactive-admin-cannot-delete";
+    const message = database.collection("chatMessages").doc(messageId);
+    await message.set({ authorUid: citizen.localId, kind: "comment", visibility: "public", text: "A community message." });
+
+    const deleted = await deleteDocuments(inactiveAdmin, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(403);
+    expect((await message.get()).exists).toBe(true);
+  });
+
+  it("does not grant message deletion from a user profile's admin role", async () => {
+    const profileAdmin = await createUser();
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    const database = getFirebaseFirestore();
+    await database.collection("users").doc(profileAdmin.localId).set({ role: "admin" });
+    const messageId = "rules-profile-role-cannot-delete";
+    const message = database.collection("chatMessages").doc(messageId);
+    await message.set({ authorUid: citizen.localId, kind: "comment", visibility: "public", text: "A community message." });
+
+    const deleted = await deleteDocuments(profileAdmin, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(403);
+    expect((await message.get()).exists).toBe(true);
+  });
+
   it("rejects a citizen impersonating a verified ECR update", async () => {
     const response = await writeDocument(citizen, "chatMessages", "rules-forged-admin", {
       authorUid: citizen.localId, kind: "admin_update", visibility: "public", text: "A forged verified update.",

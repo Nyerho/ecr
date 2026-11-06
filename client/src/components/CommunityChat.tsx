@@ -298,7 +298,7 @@ export default function CommunityChat({
                         )}
                       </button>
                     )}
-                    {message.authorUid === authorUid && (
+                    {(adminMode || message.authorUid === authorUid) && (
                       <button
                         type="button"
                         onClick={() => {
@@ -360,9 +360,9 @@ export default function CommunityChat({
       >
         <AlertDialogContent className="message-delete-dialog bg-white text-slate-950">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete your message?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
-              This permanently removes your message from the community room.
+              This permanently removes the message from the community room.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">

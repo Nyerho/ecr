@@ -29,7 +29,11 @@ function snapshot(authorUid: string | null) {
   return { exists: () => authorUid !== null, data: () => ({ authorUid }) };
 }
 
-describe("deleting your own community messages", () => {
+function adminSnapshot(data: Record<string, unknown> | null) {
+  return { exists: () => data !== null, data: () => data };
+}
+
+describe("deleting community messages", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
@@ -83,11 +87,72 @@ describe("deleting your own community messages", () => {
   });
 
   it("rejects deletion of somebody else's message", async () => {
-    mocks.get.mockResolvedValue(snapshot("another-author"));
+    mocks.get
+      .mockResolvedValueOnce(snapshot("another-author"))
+      .mockResolvedValueOnce(adminSnapshot(null));
     const { deleteCommunityMessage } = await import("./firebase");
     await expect(deleteCommunityMessage("message-1")).rejects.toMatchObject({
       code: "permission-denied",
     });
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("allows an active administrator to delete another author's message", async () => {
+    mocks.get
+      .mockResolvedValueOnce(snapshot("another-author"))
+      .mockResolvedValueOnce(adminSnapshot({ active: true }));
+    const { deleteCommunityMessage } = await import("./firebase");
+    await expect(deleteCommunityMessage("message-1")).resolves.toBeUndefined();
+    expect(mocks.get).toHaveBeenNthCalledWith(2, { path: "admins/author-1" });
+    expect(mocks.delete).toHaveBeenCalledWith({
+      path: "chatMessages/message-1",
+    });
+  });
+
+  it.each([false, undefined, "true"])(
+    "rejects a nonowner whose administrator record is inactive or invalid",
+    async active => {
+      mocks.get
+        .mockResolvedValueOnce(snapshot("another-author"))
+        .mockResolvedValueOnce(adminSnapshot({ active }));
+      const { deleteCommunityMessage } = await import("./firebase");
+      await expect(deleteCommunityMessage("message-1")).rejects.toMatchObject({
+        code: "permission-denied",
+      });
+      expect(mocks.delete).not.toHaveBeenCalled();
+    }
+  );
+
+  it("allows an active administrator to remove a legacy message without an author", async () => {
+    mocks.get
+      .mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ text: "Legacy update" }),
+      })
+      .mockResolvedValueOnce(adminSnapshot({ active: true }));
+    const { deleteCommunityMessage } = await import("./firebase");
+    await expect(deleteCommunityMessage("message-1")).resolves.toBeUndefined();
+    expect(mocks.delete).toHaveBeenCalledWith({
+      path: "chatMessages/message-1",
+    });
+  });
+
+  it("rechecks administrator authority when Firestore retries a concurrent deletion", async () => {
+    mocks.get
+      .mockResolvedValueOnce(snapshot("another-author"))
+      .mockResolvedValueOnce(adminSnapshot({ active: true }))
+      .mockResolvedValueOnce(snapshot("another-author"))
+      .mockResolvedValueOnce(adminSnapshot({ active: false }));
+    const discardedDelete = vi.fn();
+    mocks.runTransaction.mockImplementationOnce(async (_database, callback) => {
+      await callback({ get: mocks.get, delete: discardedDelete });
+      return callback({ get: mocks.get, delete: mocks.delete });
+    });
+    const { deleteCommunityMessage } = await import("./firebase");
+    await expect(deleteCommunityMessage("message-1")).rejects.toMatchObject({
+      code: "permission-denied",
+    });
+    expect(discardedDelete).toHaveBeenCalledOnce();
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 

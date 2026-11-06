@@ -615,9 +615,13 @@ export async function deleteCommunityMessage(id: string): Promise<void> {
     const message = await transaction.get(reference);
     if (!message.exists()) return;
     if (message.data().authorUid !== user.uid) {
-      throw Object.assign(new Error("You can only delete your own messages."), {
-        code: "permission-denied",
-      });
+      const admin = await transaction.get(doc(database, "admins", user.uid));
+      if (!admin.exists() || admin.data().active !== true) {
+        throw Object.assign(
+          new Error("Only the author or an active administrator can delete this message."),
+          { code: "permission-denied" }
+        );
+      }
     }
     transaction.delete(reference);
   });
