@@ -55,7 +55,10 @@ service cloud.firestore {
     }
 
     match /chatMessages/{messageId} {
-      allow read: if isAdmin() || resource.data.visibility == 'public';
+      allow get: if isAdmin()
+        || (signedIn() && !exists(/databases/$(database)/documents/chatMessages/$(messageId)))
+        || resource.data.visibility == 'public';
+      allow list: if isAdmin() || resource.data.visibility == 'public';
       allow create: if signedIn()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.visibility == 'public'

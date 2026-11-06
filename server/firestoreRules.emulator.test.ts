@@ -56,6 +56,51 @@ describe.skipIf(!enabled)("Firestore client authorization rules", () => {
     expect(response.status).toBe(200);
   });
 
+  it("allows the author to permanently delete their own community message", async () => {
+    const messageId = "rules-author-deletes-comment";
+    const created = await writeDocument(citizen, "chatMessages", messageId, {
+      authorUid: citizen.localId, kind: "comment", visibility: "public", text: "A comment the author can remove.",
+    });
+    expect(created.status).toBe(200);
+
+    const deleted = await deleteDocuments(citizen, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(200);
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    expect((await getFirebaseFirestore().collection("chatMessages").doc(messageId).get()).exists).toBe(false);
+  });
+
+  it("allows authenticated deletion retries to read a message that is already absent", async () => {
+    const response = await fetch("http://127.0.0.1:8080/v1/projects/demo-ecr/databases/(default)/documents/chatMessages/rules-already-deleted-comment", {
+      headers: { Authorization: `Bearer ${citizen.idToken}` },
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("keeps existing hidden messages private when permitting missing-message reads", async () => {
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    await getFirebaseFirestore().collection("chatMessages").doc("rules-hidden-comment").set({
+      authorUid: citizen.localId, kind: "comment", visibility: "hidden", text: "A moderated community comment.",
+    });
+    const url = "http://127.0.0.1:8080/v1/projects/demo-ecr/databases/(default)/documents/chatMessages/rules-hidden-comment";
+    const citizenRead = await fetch(url, { headers: { Authorization: `Bearer ${citizen.idToken}` } });
+    const adminRead = await fetch(url, { headers: { Authorization: `Bearer ${admin.idToken}` } });
+    expect(citizenRead.status).toBe(403);
+    expect(adminRead.status).toBe(200);
+  });
+
+  it("rejects another citizen deleting a community message they did not author", async () => {
+    const messageId = "rules-other-cannot-delete-comment";
+    const created = await writeDocument(citizen, "chatMessages", messageId, {
+      authorUid: citizen.localId, kind: "comment", visibility: "public", text: "A comment belonging to a different author.",
+    });
+    expect(created.status).toBe(200);
+
+    const deleted = await deleteDocuments(other, [`chatMessages/${messageId}`]);
+    expect(deleted.status).toBe(403);
+    const { getFirebaseFirestore } = await import("./_core/firebaseAdmin");
+    expect((await getFirebaseFirestore().collection("chatMessages").doc(messageId).get()).exists).toBe(true);
+  });
+
   it("rejects a citizen impersonating a verified ECR update", async () => {
     const response = await writeDocument(citizen, "chatMessages", "rules-forged-admin", {
       authorUid: citizen.localId, kind: "admin_update", visibility: "public", text: "A forged verified update.",

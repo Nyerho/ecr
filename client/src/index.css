@@ -1028,37 +1028,47 @@ button:hover .icon-orb {
   border-color: #3b806f;
 }
 .dark .citizen-shell .report-delete-button,
-.dark .report-delete-dialog .report-delete-error {
+.dark .report-delete-dialog .report-delete-error,
+.dark .message-delete-button,
+.dark .message-delete-dialog .message-delete-error {
   background: #482934;
   border-color: #bf7886;
   color: #ffd1d7;
 }
-.dark .citizen-shell .report-delete-button:hover {
+.dark .citizen-shell .report-delete-button:hover,
+.dark .message-delete-button:hover {
   background: #663747;
   color: #fff1f2;
 }
-.dark .report-delete-dialog {
+.dark .report-delete-dialog,
+.dark .message-delete-dialog {
   background: #153541;
   border-color: #3b7180;
   color: #e9faf5;
 }
-.dark .report-delete-dialog .report-delete-cancel {
+.dark .report-delete-dialog .report-delete-cancel,
+.dark .message-delete-dialog .message-delete-cancel {
   background: #102d37;
   border-color: #79b9aa;
   color: #effffb;
 }
-.dark .report-delete-dialog .report-delete-cancel:hover {
+.dark .report-delete-dialog .report-delete-cancel:hover,
+.dark .message-delete-dialog .message-delete-cancel:hover {
   background: #245f59;
 }
-.dark .report-delete-dialog .report-delete-confirm {
+.dark .report-delete-dialog .report-delete-confirm,
+.dark .message-delete-dialog .message-delete-confirm {
   background: #9f1239;
   color: #ffffff;
 }
-.dark .report-delete-dialog .report-delete-confirm:hover {
+.dark .report-delete-dialog .report-delete-confirm:hover,
+.dark .message-delete-dialog .message-delete-confirm:hover {
   background: #881337;
 }
 .dark .citizen-shell .report-delete-button:focus-visible,
-.dark .report-delete-dialog button:focus-visible {
+.dark .report-delete-dialog button:focus-visible,
+.dark .message-delete-button:focus-visible,
+.dark .message-delete-dialog button:focus-visible {
   outline: 3px solid #9af2cb;
   outline-offset: 3px;
 }

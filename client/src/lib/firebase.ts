@@ -536,8 +536,8 @@ function subscribeToChatSource(
       const messages = snapshot.docs.map(
         message =>
           ({
-            id: message.id,
             ...(message.data() as DocumentData),
+            id: message.id,
           }) as CommunityMessage
       );
       callback(
@@ -593,6 +593,33 @@ export async function sendCommunityMessage(input: {
     publicReference: input.publicReference ?? null,
     visibility: "public",
     createdAt: serverTimestamp(),
+  });
+}
+
+export async function deleteCommunityMessage(id: string): Promise<void> {
+  const user = requireAuth().currentUser;
+  if (!user) {
+    throw Object.assign(new Error("Sign in again before deleting a message."), {
+      code: "unauthenticated",
+    });
+  }
+  if (!id || id.includes("/")) {
+    throw Object.assign(new Error("Choose a valid message to delete."), {
+      code: "invalid-argument",
+    });
+  }
+
+  const database = requireFirestore();
+  const reference = doc(database, "chatMessages", id);
+  await runTransaction(database, async transaction => {
+    const message = await transaction.get(reference);
+    if (!message.exists()) return;
+    if (message.data().authorUid !== user.uid) {
+      throw Object.assign(new Error("You can only delete your own messages."), {
+        code: "permission-denied",
+      });
+    }
+    transaction.delete(reference);
   });
 }
 
