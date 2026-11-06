@@ -468,10 +468,10 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            <div className="relative min-h-[420px]">
+            <div className="relative min-h-105">
               <div className="beacon-halo absolute right-4 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-emerald-200/20" />
               <div className="hero-promise-shell glass-card relative z-10 rounded-4xl border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
-                <div className="hero-promise-panel rounded-[1.5rem] bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
+                <div className="hero-promise-panel rounded-3xl bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
@@ -741,7 +741,7 @@ export default function Home() {
       </footer>
       {privacyOpen && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
           role="presentation"
           onMouseDown={event => {
             if (event.target === event.currentTarget) setPrivacyOpen(false);
