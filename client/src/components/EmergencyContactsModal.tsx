@@ -79,7 +79,7 @@ export default function EmergencyContactsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="emergency-contacts-title"
-        className="emergency-contacts-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-white/70 bg-white p-5 shadow-2xl sm:p-8"
+        className="emergency-contacts-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-4xl border border-white/70 bg-white p-5 shadow-2xl sm:p-8"
       >
         <div className="flex items-start justify-between gap-5">
           <div>
@@ -101,7 +101,7 @@ export default function EmergencyContactsModal({
           <button
             type="button"
             onClick={onClose}
-            className="emergency-dialog-close rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="emergency-dialog-close rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             aria-label="Close emergency contacts dialog"
           >
             <X size={20} />
@@ -133,7 +133,7 @@ export default function EmergencyContactsModal({
                   </span>
                   <div>
                     <h3 className="font-black">{contact.name}</h3>
-                    <p className="emergency-contact-detail mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold opacity-70">
+                    <p className="emergency-contact-detail mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold">
                       <MapPin size={12} /> {contact.area}
                     </p>
                   </div>
@@ -153,7 +153,7 @@ export default function EmergencyContactsModal({
                   ))}
                 </div>
                 {index === 3 && (
-                  <p className="emergency-contact-detail mt-3 text-[10px] leading-4 opacity-60">
+                  <p className="emergency-contact-detail mt-3 text-[10px] leading-4">
                     Hospital phone number from a public facility directory;
                     confirm at deployment review.
                   </p>
@@ -197,7 +197,7 @@ export default function EmergencyContactsModal({
               href={WHATSAPP_REPORT_CHAT}
               target="_blank"
               rel="noreferrer"
-              className="emergency-community-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-black text-white hover:bg-[#1ebe5d]"
+              className="emergency-community-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-black text-[#063f3d] hover:bg-[#1ebe5d]"
             >
               <MessageCircle size={14} /> WhatsApp report chat
             </a>

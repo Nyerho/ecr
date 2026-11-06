@@ -216,7 +216,7 @@ export default function CommunityChat({
             {notificationsEnabled ? "Notifications on" : "Enable alerts"}
           </button>
         </div>
-        <div className="max-h-[30rem] space-y-3 overflow-y-auto p-4 sm:p-6">
+        <div className="max-h-120 space-y-3 overflow-y-auto p-4 sm:p-6">
           {loading && (
             <p className="py-10 text-center text-sm text-slate-500">
               Loading community updates…
@@ -346,7 +346,7 @@ export default function CommunityChat({
             <Send size={15} /> <span className="hidden sm:inline">Send</span>
           </button>
         </form>
-        <p className="border-t border-slate-100 bg-white px-4 pb-4 text-[11px] leading-5 text-slate-400 sm:px-5">
+        <p className="border-t border-slate-100 bg-white px-4 pb-4 text-[11px] leading-5 text-slate-600 sm:px-5">
           Do not post personal contact details, exact private locations, or
           sensitive medical information. Call official emergency services when
           someone is in immediate danger.

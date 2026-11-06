@@ -399,10 +399,10 @@ export default function Home() {
         )}
       </header>
 
-      <main>
+      <main className="home-content">
         <section className="hero-surface relative overflow-hidden bg-[#063f3d]">
           <div className="hero-grid absolute inset-0 opacity-40" />
-          <div className="absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full bg-emerald-300/15 blur-3xl" />
+          <div className="absolute -right-24 -top-32 h-112 w-md rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-24">
             <div className="reveal-up">
@@ -412,7 +412,7 @@ export default function Home() {
               </div>
               <h1
                 aria-live="polite"
-                className="max-w-3xl text-5xl font-black leading-[0.98] tracking-[-0.05em] text-white transition-opacity duration-500 sm:text-7xl"
+                className="max-w-3xl text-5xl font-black leading-[0.98] tracking-tighter text-white transition-opacity duration-500 sm:text-7xl"
                 key={HERO_MESSAGES[heroMessageIndex]}
               >
                 {HERO_MESSAGES[heroMessageIndex]}
@@ -470,7 +470,7 @@ export default function Home() {
             </div>
             <div className="relative min-h-[420px]">
               <div className="beacon-halo absolute right-4 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-emerald-200/20" />
-              <div className="hero-promise-shell glass-card relative z-10 rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
+              <div className="hero-promise-shell glass-card relative z-10 rounded-4xl border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
                 <div className="hero-promise-panel rounded-[1.5rem] bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -522,20 +522,20 @@ export default function Home() {
         <section className="border-b border-slate-200/80 bg-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8">
             <div>
-              <p className="text-3xl font-black text-[#063f3d]">24/7</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              <p className="text-3xl font-black text-primary">24/7</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Response-ready mindset
               </p>
             </div>
             <div>
-              <p className="text-3xl font-black text-[#063f3d]">1 clear</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              <p className="text-3xl font-black text-primary">1 clear</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Report-to-resolution thread
               </p>
             </div>
             <div>
-              <p className="text-3xl font-black text-[#063f3d]">Local first</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              <p className="text-3xl font-black text-primary">Local first</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Communities and agencies together
               </p>
             </div>
@@ -640,7 +640,7 @@ export default function Home() {
           id="trust"
           className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
         >
-          <div className="rounded-[2rem] bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10">
+          <div className="rounded-4xl bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10">
             <LockKeyhole className="mx-auto text-emerald-300" size={28} />
             <h2 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">
               Safety is part of the product, not a footer note.
@@ -751,7 +751,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="privacy-title"
-            className="glass-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] p-6 shadow-2xl sm:p-8"
+            className="home-privacy-dialog glass-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-4xl p-6 shadow-2xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-5">
               <div>

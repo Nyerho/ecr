@@ -991,15 +991,15 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-              <div className="relative min-h-[360px] reveal-float">
-                <div className="glass-card absolute inset-x-4 top-8 z-10 rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl sm:inset-x-7">
-                  <div className="rounded-[1.5rem] bg-[#f4faf8]/95 p-5 shadow-inner shadow-white sm:p-6">
+              <div className="relative min-h-90 reveal-float">
+                <div className="glass-card absolute inset-x-4 top-8 z-10 rounded-4xl border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl sm:inset-x-7">
+                  <div className="rounded-3xl bg-[#f4faf8]/95 p-5 shadow-inner shadow-white sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
                           Your response loop
                         </p>
-                        <p className="mt-1 max-w-[245px] text-lg font-black text-slate-900">
+                        <p className="mt-1 max-w-61.25 text-lg font-black text-slate-900">
                           One clear thread from report to resolution
                         </p>
                       </div>
@@ -1036,7 +1036,7 @@ export default function Home() {
                             <p className="text-sm font-black text-slate-900">
                               {title}
                             </p>
-                            <p className="mt-0.5 max-w-[200px] text-xs leading-5 text-slate-500">
+                            <p className="mt-0.5 max-w-50 text-xs leading-5 text-slate-500">
                               {detail}
                             </p>
                           </div>
@@ -1173,7 +1173,7 @@ export default function Home() {
                 </p>
                 <Button
                   onClick={() => startLogin()}
-                  className="mt-5 rounded-xl bg-[#063f3d]"
+                  className="mt-5 rounded-xl bg-primary"
                 >
                   Sign in securely
                 </Button>
@@ -1384,7 +1384,7 @@ export default function Home() {
 
       {adminPromptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-xl">
-          <div className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8">
+          <div className="report-dialog glass-card w-full max-w-md rounded-4xl p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between">
               <div>
                 <span className="icon-orb grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
@@ -1435,7 +1435,7 @@ export default function Home() {
               <Button
                 disabled={!adminPassword || unlockAdmin.isPending}
                 onClick={() => unlockAdmin.mutate({ password: adminPassword })}
-                className="flex-1 rounded-xl bg-[#063f3d]"
+                className="flex-1 rounded-xl bg-primary"
               >
                 {unlockAdmin.isPending ? "Checking…" : "Unlock center"}
               </Button>
@@ -1455,12 +1455,12 @@ export default function Home() {
       <FloatingWhatsApp />
       <FloatingTikTok />
       {reportReceipt && (
-        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-65 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <section
             role="dialog"
             aria-modal="true"
             aria-labelledby="receipt-title"
-            className="glass-card w-full max-w-md rounded-[2rem] p-6 shadow-2xl sm:p-8"
+            className="report-dialog glass-card w-full max-w-md rounded-4xl p-6 shadow-2xl sm:p-8"
           >
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
               <CheckCircle2 size={28} />
@@ -1505,7 +1505,7 @@ export default function Home() {
               </Button>
               <Button
                 onClick={() => setReportReceipt(null)}
-                className="flex-1 rounded-xl bg-[#063f3d]"
+                className="flex-1 rounded-xl bg-primary"
               >
                 Done
               </Button>
@@ -1540,13 +1540,13 @@ export default function Home() {
       )}
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-[2rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:p-7">
+          <div className="report-dialog glass-card max-h-[92vh] min-w-0 w-full max-w-2xl overflow-y-auto rounded-t-4xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-4xl sm:p-7">
             <div className="flex min-w-0 items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="break-words text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                <p className="wrap-break-word text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
                   Secure community help request
                 </p>
-                <h2 className="mt-1 break-words text-2xl font-black tracking-tight">
+                <h2 className="mt-1 wrap-break-word text-2xl font-black tracking-tight">
                   {reportStep === "category"
                     ? "What is happening?"
                     : (selected?.label ?? "Report details")}
@@ -2552,7 +2552,7 @@ function OperationsConsole({
                           onClick={() =>
                             onUpdate(incident.id, "received", incident.version)
                           }
-                          className="rounded-xl bg-[#063f3d] text-xs"
+                          className="rounded-xl bg-primary text-xs"
                         >
                           Acknowledge & queue agency
                         </Button>
@@ -2562,7 +2562,7 @@ function OperationsConsole({
                           onClick={() =>
                             onUpdate(incident.id, "triaged", incident.version)
                           }
-                          className="rounded-xl bg-[#063f3d] text-xs"
+                          className="rounded-xl bg-primary text-xs"
                         >
                           Triage
                         </Button>
@@ -2572,7 +2572,7 @@ function OperationsConsole({
                           onClick={() =>
                             onUpdate(incident.id, "assigned", incident.version)
                           }
-                          className="rounded-xl bg-[#063f3d] text-xs"
+                          className="rounded-xl bg-primary text-xs"
                         >
                           Assign
                         </Button>
@@ -2586,7 +2586,7 @@ function OperationsConsole({
                               incident.version
                             )
                           }
-                          className="rounded-xl bg-[#063f3d] text-xs"
+                          className="rounded-xl bg-primary text-xs"
                         >
                           Mark responding
                         </Button>
@@ -2596,7 +2596,7 @@ function OperationsConsole({
                           onClick={() =>
                             onUpdate(incident.id, "arrived", incident.version)
                           }
-                          className="rounded-xl bg-[#063f3d] text-xs"
+                          className="rounded-xl bg-primary text-xs"
                         >
                           Mark arrived
                         </Button>
@@ -2606,7 +2606,7 @@ function OperationsConsole({
                           onClick={() =>
                             onUpdate(incident.id, "resolved", incident.version)
                           }
-                          className="rounded-xl bg-emerald-500 text-xs text-emerald-950 hover:bg-emerald-400"
+                          className="rounded-xl bg-emerald-500 text-xs text-[#022c2b] hover:bg-emerald-400"
                         >
                           Resolve
                         </Button>

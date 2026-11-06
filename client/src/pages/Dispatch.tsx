@@ -143,7 +143,7 @@ export default function Dispatch() {
   if (!active) {
     return (
       <main className="dispatch-shell min-h-screen bg-[#f5f8f7] px-4 py-10 text-slate-950">
-        <div className="dispatch-entry-card mx-auto max-w-lg rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-xl">
+        <div className="dispatch-entry-card mx-auto max-w-lg rounded-4xl border border-slate-200 bg-white p-8 text-center shadow-xl">
           <BrandLogo
             variant="3d"
             className="mx-auto w-40"
@@ -364,7 +364,7 @@ export default function Dispatch() {
           </section>
           <section className="min-w-0">
             {selected ? (
-              <div className="dispatch-detail rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="dispatch-detail rounded-4xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
@@ -530,7 +530,7 @@ export default function Dispatch() {
                 </div>
               </div>
             ) : (
-              <div className="grid min-h-[420px] place-items-center rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center">
+              <div className="grid min-h-[420px] place-items-center rounded-4xl border border-dashed border-slate-300 bg-white p-10 text-center">
                 <Siren className="text-slate-300" size={32} />
                 <p className="mt-4 text-sm font-black">
                   Select an incident to inspect its details
