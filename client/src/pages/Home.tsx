@@ -25,6 +25,7 @@ import EmergencyContactsModal from "@/components/EmergencyContactsModal";
 import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import {
   trackPublicIncident,
   type PublicIncidentTracking,
@@ -271,6 +272,7 @@ function PublicReportTracker() {
 }
 
 export default function Home() {
+  const contentRef = useScrollReveal();
   const [menuOpen, setMenuOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -399,13 +401,13 @@ export default function Home() {
         )}
       </header>
 
-      <main className="home-content">
+      <main ref={contentRef} className="home-content">
         <section className="hero-surface relative overflow-hidden bg-[#063f3d]">
           <div className="hero-grid absolute inset-0 opacity-40" />
           <div className="absolute -right-24 -top-32 h-112 w-md rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-24">
-            <div className="reveal-up">
+            <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />{" "}
                 Built for safer communities
@@ -521,19 +523,19 @@ export default function Home() {
 
         <section className="border-b border-slate-200/80 bg-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8">
-            <div>
+            <div data-scroll-reveal="">
               <p className="text-3xl font-black text-primary">24/7</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Response-ready mindset
               </p>
             </div>
-            <div>
+            <div data-scroll-reveal="" data-scroll-delay="1">
               <p className="text-3xl font-black text-primary">1 clear</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Report-to-resolution thread
               </p>
             </div>
-            <div>
+            <div data-scroll-reveal="" data-scroll-delay="2">
               <p className="text-3xl font-black text-primary">Local first</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Communities and agencies together
@@ -546,9 +548,9 @@ export default function Home() {
 
         <section
           id="how-it-works"
-          className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+          className="mx-auto max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
         >
-          <div className="max-w-2xl">
+          <div data-scroll-reveal="" className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
               A simple response loop
             </p>
@@ -564,6 +566,8 @@ export default function Home() {
             {steps.map(([number, title, text], index) => (
               <div
                 key={number}
+                data-scroll-reveal=""
+                data-scroll-delay={index}
                 className="glass-tile rounded-3xl border border-slate-200/80 bg-white/80 p-5"
               >
                 <span
@@ -578,9 +582,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="network" className="bg-[#eaf6f1]">
+        <section id="network" className="scroll-mt-24 bg-[#eaf6f1]">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-24">
-            <div>
+            <div data-scroll-reveal="">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
                 A coordinated network
               </p>
@@ -600,7 +604,10 @@ export default function Home() {
               </a>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <UsersRound className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For communities</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -608,7 +615,11 @@ export default function Home() {
                   as the status changes.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="1"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <ShieldCheck className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For agencies</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -616,7 +627,11 @@ export default function Home() {
                   context, and a traceable audit trail.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="2"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <Clock3 className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For responders</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -624,7 +639,11 @@ export default function Home() {
                   reporting close to the loop.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="3"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <LockKeyhole className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For trust</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -640,7 +659,10 @@ export default function Home() {
           id="trust"
           className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
         >
-          <div className="rounded-4xl bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10">
+          <div
+            data-scroll-reveal=""
+            className="rounded-4xl bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10"
+          >
             <LockKeyhole className="mx-auto text-emerald-300" size={28} />
             <h2 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">
               Safety is part of the product, not a footer note.
