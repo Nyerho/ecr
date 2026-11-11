@@ -19,8 +19,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -49,3 +47,21 @@ jobs:
 
       - name: TypeScript validation
         run: pnpm exec tsc --noEmit
+
+      - name: Unit and regression tests
+        run: pnpm test
+
+      - name: Mobile report regression tests
+        run: node --test mobile/reportData.test.mjs
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Firebase transaction and access-rule tests
+        run: pnpm test:emulator
+
+      - name: Production build
+        run: pnpm build

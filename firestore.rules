@@ -6,11 +6,25 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
     }
 
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
+    }
+
+    function ownsPublicTracking(reference) {
+      return signedIn() && reference is string
+        && exists(/databases/$(database)/documents/publicTracking/$(reference))
+        && get(/databases/$(database)/documents/publicTracking/$(reference)).data.get('ownerUid', '') == request.auth.uid;
+    }
+
+    function reportReferenceIsActive(reference) {
+      return reference == null || (reference is string
+        && getAfter(/databases/$(database)/documents/publicTracking/$(reference)).data.public == true
+        && getAfter(/databases/$(database)/documents/publicTracking/$(reference)).data.get('deletionPending', false) != true);
     }
 
     match /users/{uid} {
@@ -28,26 +42,40 @@ service cloud.firestore {
     match /incidents/{incidentId} {
       allow create: if signedIn() && request.resource.data.reporterUid == request.auth.uid && request.resource.data.status == 'submitted';
       allow read: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid);
+      allow update: if isAdmin() && resource.data.get('deletionPending', false) != true;
+      allow delete: if resource.data.get('deletionPending', false) != true
+        && (isAdmin() || (signedIn() && resource.data.reporterUid == request.auth.uid));
     }
     match /publicTracking/{reference} {
       allow create: if (isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid)) && request.resource.data.public == true;
-      allow read: if resource.data.public == true;
+      allow get: if !exists(/databases/$(database)/documents/publicTracking/$(reference)) || resource.data.public == true;
+      allow list: if resource.data.public == true;
       allow update: if isAdmin();
       allow delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
     match /chatMessages/{messageId} {
-      allow read: if isAdmin() || resource.data.visibility == 'public';
+      allow get: if isAdmin()
+        || (signedIn() && !exists(/databases/$(database)/documents/chatMessages/$(messageId)))
+        || resource.data.visibility == 'public';
+      allow list: if isAdmin() || resource.data.visibility == 'public';
       allow create: if signedIn()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.visibility == 'public'
+        && reportReferenceIsActive(request.resource.data.get('publicReference', null))
         && request.resource.data.kind in ['alert', 'comment', 'admin_update']
+        && (request.resource.data.kind != 'admin_update' || isAdmin())
+        && request.resource.data.keys().hasOnly([
+          'kind', 'text', 'authorUid', 'publicReference', 'category',
+          'locationLabel', 'visibility', 'createdAt', 'urgency', 'status', 'replyToId'
+        ])
         && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 800;
       allow update: if isAdmin();
-      allow delete: if isAdmin() || (signedIn() && resource.data.authorUid == request.auth.uid);
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.authorUid == request.auth.uid)
+        || ownsPublicTracking(resource.data.get('publicReference', null));
     }
 
     match /contentReports/{reportId} {
@@ -58,7 +86,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     match /deviceTokens/{tokenId} {
-      allow create, update: if signedIn()
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.platform in ['android', 'ios']
+        && request.resource.data.token is string;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.platform in ['android', 'ios']
         && request.resource.data.token is string;

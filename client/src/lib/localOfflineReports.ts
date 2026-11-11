@@ -1,4 +1,5 @@
 export type PendingReportPayload = {
+  commandKey?: string;
   category: string;
   description: string;
   reporterName?: string;
@@ -29,15 +30,33 @@ function read(): PendingReport[] {
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as PendingReport[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isPendingReport) : [];
   } catch {
     return [];
   }
 }
 
+function isPendingReport(value: unknown): value is PendingReport {
+  if (!value || typeof value !== "object") return false;
+  const report = value as Record<string, unknown>;
+  return (
+    typeof report.id === "string" &&
+    typeof report.queuedAt === "string" &&
+    typeof report.category === "string" &&
+    typeof report.description === "string" &&
+    (report.commandKey === undefined || typeof report.commandKey === "string") &&
+    typeof report.attempts === "number" &&
+    Number.isInteger(report.attempts) &&
+    report.attempts >= 0
+  );
+}
+
 function write(reports: PendingReport[]) {
-  globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(reports));
+  if (!globalThis.localStorage) {
+    throw new Error("This browser cannot save reports on this device.");
+  }
+  globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
 }
 
 export function loadPendingReports(): PendingReport[] {
@@ -61,7 +80,7 @@ export function queuePendingReport(
 
 export function updatePendingReport(
   id: string,
-  patch: Partial<Pick<PendingReport, "attempts" | "lastError">>,
+  patch: Partial<Pick<PendingReport, "attempts" | "lastError" | "commandKey">>,
 ) {
   write(read().map(report => (report.id === id ? { ...report, ...patch } : report)));
 }
@@ -74,8 +93,17 @@ export function isRetryableReportError(error: unknown): boolean {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
   const code =
     error && typeof error === "object" && "code" in error
-      ? String((error as { code?: unknown }).code)
+      ? String((error as { code?: unknown }).code).toLowerCase()
       : "";
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : 0;
+  if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
+  if (
+    error instanceof TypeError &&
+    /failed to fetch|fetch failed|load failed|network\s?(?:error|request failed)/i.test(error.message)
+  ) return true;
   return [
     "auth/network-request-failed",
     "unavailable",

@@ -19,6 +19,30 @@ describe("agency dispatch", () => {
     expect(selectNearestAgency({ category: "medical", latitude: "6.5", longitude: "3.3" }, [])).toBeNull();
   });
 
+  it("does not treat an incident without coordinates as a location at zero degrees", () => {
+    const selected = selectNearestAgency(
+      { category: "medical", latitude: null, longitude: null },
+      [
+        { id: 1, name: "First Medical Agency", type: "medical", latitude: "6.5", longitude: "3.3", isVerified: true, isActive: true },
+        { id: 2, name: "Agency Near Zero", type: "medical", latitude: "0", longitude: "0", isVerified: true, isActive: true },
+      ],
+    );
+
+    expect(selected?.id).toBe(1);
+  });
+
+  it("ranks agencies with known coordinates ahead of agencies with missing coordinates", () => {
+    const selected = selectNearestAgency(
+      { category: "medical", latitude: "0", longitude: "0" },
+      [
+        { id: 1, name: "Missing Location", type: "medical", latitude: null, longitude: " ", isVerified: true, isActive: true },
+        { id: 2, name: "Known Location", type: "medical", latitude: "0.5", longitude: "0.5", isVerified: true, isActive: true },
+      ],
+    );
+
+    expect(selected?.id).toBe(2);
+  });
+
   it("prefers a verified agency whose service boundary contains the incident", () => {
     const selected = selectNearestAgency(
       { category: "security", latitude: "6.5", longitude: "3.3" },

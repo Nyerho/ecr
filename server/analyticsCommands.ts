@@ -4,6 +4,15 @@ import { CommandError, type CommandPrincipal } from "./trustedIncidentCommands";
 
 function requireOperator(principal: CommandPrincipal) {
   if (!['admin', 'dispatcher', 'coordinator'].includes(principal.role)) throw new CommandError('FORBIDDEN', 'Analytics access is restricted to operational roles.');
+  if (principal.role === 'admin') return [];
+  const memberships = principal.memberships.filter(membership => membership.active
+    && membership.uid === principal.uid
+    && membership.organizationId === principal.organizationId
+    && ['dispatcher', 'coordinator'].includes(membership.role));
+  if (!principal.organizationId || memberships.length === 0) {
+    throw new CommandError('FORBIDDEN', 'An active operational organization membership is required for analytics.');
+  }
+  return memberships;
 }
 
 function dateValue(value: unknown) {
@@ -13,7 +22,7 @@ function dateValue(value: unknown) {
 }
 
 export async function getTrustedAnalytics(principal: CommandPrincipal, requestedDays: unknown) {
-  requireOperator(principal);
+  const memberships = requireOperator(principal);
   const days = Number(requestedDays ?? 30);
   if (!Number.isInteger(days) || days < 7 || days > 90) throw new CommandError('INVALID_ARGUMENT', 'Analytics period must be between 7 and 90 days.');
   const database = getFirebaseFirestore();
@@ -21,7 +30,15 @@ export async function getTrustedAnalytics(principal: CommandPrincipal, requested
   let query = database.collection('incidents').orderBy('createdAt', 'desc').limit(5000);
   if (principal.role !== 'admin' && principal.organizationId) query = database.collection('incidents').where('organizationId', '==', principal.organizationId).orderBy('createdAt', 'desc').limit(5000) as typeof query;
   const snapshot = await query.get();
-  const incidents: Array<DocumentData & { id: string }> = snapshot.docs.map(document => ({ id: document.id, ...document.data() } as DocumentData & { id: string })).filter(incident => { const created = dateValue(incident.createdAt); return Boolean(created && created >= cutoff); });
+  const incidents: Array<DocumentData & { id: string }> = snapshot.docs
+    .map(document => ({ id: document.id, ...document.data() } as DocumentData & { id: string }))
+    .filter(incident => {
+      const created = dateValue(incident.createdAt);
+      const inScope = principal.role === 'admin' || memberships.some(membership =>
+        membership.organizationId === incident.organizationId
+        && (!incident.jurisdictionId || !membership.jurisdictionId || membership.jurisdictionId === incident.jurisdictionId));
+      return Boolean(inScope && created && created >= cutoff);
+    });
   const byStatus = new Map<string, number>();
   const byCategory = new Map<string, number>();
   const byDay = new Map<string, number>();

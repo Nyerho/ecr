@@ -68,9 +68,9 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f8f7] px-4 py-8 text-slate-950 sm:px-6">
+    <main className="auth-shell min-h-screen bg-[#f5f8f7] px-4 py-8 text-slate-950 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
-        <div className="glass-card grid w-full overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="glass-card grid w-full overflow-hidden rounded-4xl shadow-2xl shadow-emerald-950/10 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="hidden bg-[#063f3d] p-10 text-white lg:block lg:p-14">
             <div>
               <BrandLogo
@@ -153,9 +153,10 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                   </span>
                   <span className="relative mt-2 block">
                     <input
-                      required
+                      required={!resetMode}
+                      disabled={resetMode}
                       type={showPassword ? "text" : "password"}
-                      minLength={8}
+                      minLength={isRegister ? 8 : undefined}
                       value={password}
                       onChange={event => setPassword(event.target.value)}
                       autoComplete={
@@ -167,7 +168,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                     <button
                       type="button"
                       onClick={() => setShowPassword(value => !value)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-slate-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 hover:text-slate-700"
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
@@ -205,7 +206,7 @@ export default function Auth({ mode }: { mode: "sign-in" | "register" }) {
                 </Button>
               </form>
               {!isRegister && (
-                <button type="button" onClick={() => { setResetMode(value => !value); setError(""); setResetSent(false); }} className="mt-4 block w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900">
+                <button type="button" disabled={isSubmitting} onClick={() => { setResetMode(value => !value); setError(""); setResetSent(false); }} className="mt-4 block w-full text-center text-sm font-bold text-emerald-700 hover:text-emerald-900">
                   {resetMode ? "Back to sign in" : "Forgot your password?"}
                 </button>
               )}

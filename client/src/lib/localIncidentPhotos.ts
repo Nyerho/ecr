@@ -76,8 +76,8 @@ function openPhotoDatabase(): Promise<IDBDatabase> {
   });
 }
 
-export async function storeIncidentPhotos(incidentId: number, photos: IncidentPhotoDraft[]): Promise<void> {
-  if (!photos.length) return;
+export async function storeIncidentPhotos(incidentId: number | string, photos: IncidentPhotoDraft[], replaceExisting = false): Promise<void> {
+  if (!photos.length && !replaceExisting) return;
   const issue = validateIncidentPhotoFiles(photos.map(photo => photo.file));
   if (issue) throw new Error(issue);
   const database = await openPhotoDatabase();
@@ -85,9 +85,20 @@ export async function storeIncidentPhotos(incidentId: number, photos: IncidentPh
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, "readwrite");
       const store = transaction.objectStore(STORE_NAME);
-      for (const photo of photos) {
-        const { file, ...metadata } = photo;
-        store.put({ ...metadata, incidentId, blob: file });
+      const putPhotos = () => {
+        for (const photo of photos) {
+          const { file, ...metadata } = photo;
+          store.put({ ...metadata, incidentId, blob: file });
+        }
+      };
+      if (replaceExisting) {
+        const existingKeys = store.index("incidentId").getAllKeys(incidentId);
+        existingKeys.onsuccess = () => {
+          existingKeys.result.forEach(key => store.delete(key));
+          putPhotos();
+        };
+      } else {
+        putPhotos();
       }
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error("Could not save incident photos."));
@@ -98,7 +109,7 @@ export async function storeIncidentPhotos(incidentId: number, photos: IncidentPh
   }
 }
 
-export async function loadIncidentPhotos(incidentId: number): Promise<StoredIncidentPhoto[]> {
+export async function loadIncidentPhotos(incidentId: number | string): Promise<StoredIncidentPhoto[]> {
   const database = await openPhotoDatabase();
   try {
     return await new Promise<StoredIncidentPhoto[]>((resolve, reject) => {
@@ -112,7 +123,7 @@ export async function loadIncidentPhotos(incidentId: number): Promise<StoredInci
   }
 }
 
-export async function deleteIncidentPhotos(incidentId: number): Promise<void> {
+export async function deleteIncidentPhotos(incidentId: number | string): Promise<void> {
   const database = await openPhotoDatabase();
   try {
     await new Promise<void>((resolve, reject) => {

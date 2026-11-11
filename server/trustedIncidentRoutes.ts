@@ -17,6 +17,7 @@ import { completeTrustedMediaUpload, createTrustedMediaDownloadUrl, createTruste
 import { processPrivateMediaRetention } from "./mediaRetentionCommands";
 import { revokeUserSessions } from "./securityCommands";
 import { getTrustedAnalytics } from "./analyticsCommands";
+import { deleteOwnedIncident } from "./incidentDeletionCommands";
 
 function sendCommandError(res: Response, error: unknown) {
   if (error instanceof CommandError) {
@@ -37,11 +38,32 @@ async function withPrincipal(req: Request, res: Response) {
 }
 
 export function registerTrustedIncidentRoutes(app: Express) {
+  app.delete("/api/v1/incidents/:incidentId", async (req, res) => {
+    const principal = await withPrincipal(req, res);
+    if (!principal) return;
+    try {
+      res.status(200).json(await deleteOwnedIncident(principal, req.params.incidentId));
+    } catch (error) {
+      sendCommandError(res, error);
+    }
+  });
+
   app.post("/api/v1/incidents", async (req, res) => {
     const principal = await withPrincipal(req, res);
     if (!principal) return;
     try {
-      const result = await createTrustedIncident({ principal, ...req.body });
+      const result = await createTrustedIncident({
+        principal,
+        category: req.body?.category,
+        description: req.body?.description,
+        commandKey: req.body?.commandKey,
+        reporterName: req.body?.reporterName,
+        locationLabel: req.body?.locationLabel,
+        latitude: req.body?.latitude,
+        longitude: req.body?.longitude,
+        reporterPhone: req.body?.reporterPhone,
+        reporterEmail: req.body?.reporterEmail,
+      });
       res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) {
       sendCommandError(res, error);

@@ -74,6 +74,38 @@ describe.skipIf(!enabled)("trusted Firebase commands against emulators", () => {
     expect(incidents.size).toBe(1);
   });
 
+  it("allows only the reporter to delete an incident and its linked public records", async () => {
+    const owner = await createEmulatorUser("delete-owner@example.test");
+    const other = await createEmulatorUser("delete-other@example.test");
+    const ownerPrincipal = await commands.authenticateBearerToken(`Bearer ${owner.idToken}`);
+    const otherPrincipal = await commands.authenticateBearerToken(`Bearer ${other.idToken}`);
+    const input = {
+      principal: ownerPrincipal,
+      category: "medical",
+      description: "Synthetic report for owner deletion verification.",
+      reporterEmail: "delete-owner@example.test",
+      commandKey: "emulator-delete-create-001",
+    };
+    const incident = await commands.createTrustedIncident(input);
+    await firestore.collection("chatMessages").doc("emulator-deletion-update").set({
+      publicReference: incident.publicReference,
+      authorUid: "test-admin",
+      kind: "admin_update",
+      visibility: "public",
+      text: "Synthetic response status update.",
+    });
+    const { deleteOwnedIncident } = await import("./incidentDeletionCommands");
+    await expect(deleteOwnedIncident(otherPrincipal, incident.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await firestore.collection("incidents").doc(incident.id).get()).exists).toBe(true);
+    await expect(deleteOwnedIncident(ownerPrincipal, incident.id)).resolves.toEqual({ id: incident.id, deleted: true });
+    expect((await firestore.collection("incidents").doc(incident.id).get()).exists).toBe(false);
+    expect((await firestore.collection("publicTracking").doc(incident.publicReference).get()).exists).toBe(false);
+    expect((await firestore.collection("chatMessages").doc("emulator-deletion-update").get()).exists).toBe(false);
+    const audit = await firestore.collection("auditEvents").where("resourceId", "==", incident.id).where("action", "==", "incident.deleted").get();
+    expect(audit.size).toBe(1);
+    await expect(commands.createTrustedIncident(input)).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
   it("returns privacy-safe analytics and audits the analytics view", async () => {
     const admin = await createEmulatorUser("analytics-admin@example.test");
     await firestore.collection("admins").doc(admin.localId).set({ active: true });

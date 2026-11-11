@@ -8,32 +8,35 @@ import {
   Send,
   ShieldCheck,
   Siren,
+  Trash2,
 } from "lucide-react";
 import {
+  deleteCommunityMessage,
   firebaseConfigured,
   hideCommunityMessage,
+  observeFirebaseUser,
   unhideCommunityMessage,
   sendCommunityMessage,
   subscribeToAdminCommunityChat,
   subscribeToCommunityChat,
   type CommunityMessage,
 } from "@/lib/firebase";
+import { formatMessageTimestamp } from "@shared/messageTimestamp";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 type CommunityChatProps = {
   adminMode?: boolean;
 };
-
-function messageTime(value: unknown) {
-  if (!value) return "Just now";
-  const date =
-    typeof value === "object" && value !== null && "toDate" in value
-      ? (value as { toDate: () => Date }).toDate()
-      : new Date(value as string | number);
-  return Number.isNaN(date.getTime())
-    ? "Just now"
-    : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 
 function messageTone(kind: CommunityMessage["kind"]) {
   if (kind === "alert") return "border-rose-100 bg-rose-50/80";
@@ -48,10 +51,27 @@ export default function CommunityChat({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [authorUid, setAuthorUid] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now);
+  const [messageToDelete, setMessageToDelete] =
+    useState<CommunityMessage | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deletionInFlight = useRef(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted"
   );
-  const firstSnapshot = useRef(true);
+  const latestMessageTime = useRef<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseConfigured) return;
+    return observeFirebaseUser(user => setAuthorUid(user?.uid ?? null));
+  }, []);
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -63,22 +83,25 @@ export default function CommunityChat({
       : subscribeToCommunityChat;
     const stop = subscribe(
       nextMessages => {
+        const latest = nextMessages[nextMessages.length - 1];
+        const latestDate = formatMessageTimestamp(latest?.createdAt).dateTime;
+        const timestamp = latestDate ? Date.parse(latestDate) : 0;
         if (
-          !firstSnapshot.current &&
-          nextMessages.length > messages.length &&
-          notificationsEnabled
+          latest &&
+          latestMessageTime.current !== null &&
+          timestamp > latestMessageTime.current &&
+          notificationsEnabled &&
+          typeof Notification !== "undefined"
         ) {
-          const latest = nextMessages[nextMessages.length - 1];
-          if (typeof Notification !== "undefined") {
-            new Notification(
-              latest.kind === "alert"
-                ? "New ECR alert"
-                : "ECR community update",
-              { body: latest.text.slice(0, 140) }
-            );
-          }
+          new Notification(
+            latest.kind === "alert" ? "New ECR alert" : "ECR community update",
+            { body: latest.text.slice(0, 140) }
+          );
         }
-        firstSnapshot.current = false;
+        latestMessageTime.current = Math.max(
+          latestMessageTime.current ?? 0,
+          timestamp
+        );
         setMessages(nextMessages);
         setLoading(false);
       },
@@ -134,6 +157,30 @@ export default function CommunityChat({
     }
   }
 
+  async function confirmDelete() {
+    if (!messageToDelete || deletionInFlight.current) return;
+    deletionInFlight.current = true;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteCommunityMessage(messageToDelete.id);
+      setMessages(current =>
+        current.filter(message => message.id !== messageToDelete.id)
+      );
+      setMessageToDelete(null);
+      toast.success("Message deleted from the community room.");
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Could not delete this message. Please try again."
+      );
+    } finally {
+      deletionInFlight.current = false;
+      setDeleting(false);
+    }
+  }
+
   return (
     <section
       className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
@@ -169,7 +216,7 @@ export default function CommunityChat({
             {notificationsEnabled ? "Notifications on" : "Enable alerts"}
           </button>
         </div>
-        <div className="max-h-[30rem] space-y-3 overflow-y-auto p-4 sm:p-6">
+        <div className="max-h-120 space-y-3 overflow-y-auto p-4 sm:p-6">
           {loading && (
             <p className="py-10 text-center text-sm text-slate-500">
               Loading community updates…
@@ -186,52 +233,88 @@ export default function CommunityChat({
               </div>
             </div>
           )}
-          {messages.map(message => (
-            <article
-              key={message.id}
-              className={`rounded-2xl border p-4 ${messageTone(message.kind)}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  {message.kind === "alert" ? (
-                    <Siren size={14} className="text-rose-600" />
-                  ) : message.kind === "admin_update" ? (
-                    <ShieldCheck size={14} className="text-emerald-700" />
-                  ) : (
-                    <MessageCircle size={14} />
-                  )}
-                  {message.kind === "alert"
-                    ? "Emergency alert"
-                    : message.kind === "admin_update"
-                      ? "Verified ECR update"
-                      : "Community comment"}
+          {messages.map(message => {
+            const timestamp = formatMessageTimestamp(message.createdAt, now);
+            return (
+              <article
+                key={message.id}
+                className={`rounded-2xl border p-4 ${messageTone(message.kind)}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+                    {message.kind === "alert" ? (
+                      <Siren size={14} className="text-rose-600" />
+                    ) : message.kind === "admin_update" ? (
+                      <ShieldCheck size={14} className="text-emerald-700" />
+                    ) : (
+                      <MessageCircle size={14} />
+                    )}
+                    {message.kind === "alert"
+                      ? "Emergency alert"
+                      : message.kind === "admin_update"
+                        ? "Verified ECR update"
+                        : "Community comment"}
+                  </div>
+                  <time
+                    dateTime={timestamp.dateTime}
+                    title={timestamp.fullDate}
+                    aria-label={
+                      timestamp.fullDate
+                        ? `${timestamp.label}, ${timestamp.fullDate}`
+                        : timestamp.label
+                    }
+                    className="text-[11px] font-semibold text-slate-600"
+                  >
+                    {timestamp.label}
+                  </time>
                 </div>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  {messageTime(message.createdAt)}
-                </span>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">
-                {message.text}
-              </p>
-              {message.publicReference && (
-                <a
-                  href={`/?report=${encodeURIComponent(message.publicReference)}#track-report`}
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline"
-                >
-                  Track {message.publicReference}
-                </a>
-              )}
-              {adminMode && (
-                <button
-                  type="button"
-                  onClick={() => moderateMessage(message)}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-rose-700 hover:underline"
-                >
-                  {message.visibility === "hidden" ? <><CheckCircle2 size={13} /> Unhide message</> : <><EyeOff size={13} /> Hide message</>}
-                </button>
-              )}
-            </article>
-          ))}
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                  {message.text}
+                </p>
+                {message.publicReference && (
+                  <a
+                    href={`/?report=${encodeURIComponent(message.publicReference)}#track-report`}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline"
+                  >
+                    Track {message.publicReference}
+                  </a>
+                )}
+                {(adminMode || message.authorUid === authorUid) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    {adminMode && (
+                      <button
+                        type="button"
+                        onClick={() => moderateMessage(message)}
+                        className="inline-flex items-center gap-1.5 text-xs font-black text-rose-700 hover:underline"
+                      >
+                        {message.visibility === "hidden" ? (
+                          <>
+                            <CheckCircle2 size={13} /> Unhide message
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff size={13} /> Hide message
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {(adminMode || message.authorUid === authorUid) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteError("");
+                          setMessageToDelete(message);
+                        }}
+                        className="message-delete-button inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-800 hover:bg-rose-100"
+                      >
+                        <Trash2 size={13} aria-hidden="true" /> Delete message
+                      </button>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
         <form
           onSubmit={sendMessage}
@@ -263,12 +346,56 @@ export default function CommunityChat({
             <Send size={15} /> <span className="hidden sm:inline">Send</span>
           </button>
         </form>
-        <p className="border-t border-slate-100 bg-white px-4 pb-4 text-[11px] leading-5 text-slate-400 sm:px-5">
+        <p className="border-t border-slate-100 bg-white px-4 pb-4 text-[11px] leading-5 text-slate-600 sm:px-5">
           Do not post personal contact details, exact private locations, or
           sensitive medical information. Call official emergency services when
           someone is in immediate danger.
         </p>
       </div>
+      <AlertDialog
+        open={Boolean(messageToDelete)}
+        onOpenChange={open => {
+          if (!open && !deletionInFlight.current) setMessageToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="message-delete-dialog bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600">
+              This permanently removes the message from the community room.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+            {messageToDelete?.text}
+          </p>
+          {deleteError && (
+            <p
+              role="alert"
+              className="message-delete-error rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
+            >
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleting}
+              className="message-delete-cancel border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
+            >
+              Keep message
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={event => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+              className="message-delete-confirm bg-rose-700 text-white hover:bg-rose-800"
+            >
+              {deleting ? "Deleting…" : "Delete message"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

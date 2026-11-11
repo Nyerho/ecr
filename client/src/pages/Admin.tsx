@@ -411,7 +411,7 @@ export default function Admin() {
   return (
     <main className="admin-shell min-h-screen bg-background text-foreground">
       <header className="admin-header border-b border-border bg-card/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-375 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <BrandLogo className="w-28 sm:w-32" imageClassName="rounded-xl" />
             <span>
@@ -443,7 +443,7 @@ export default function Admin() {
           </div>
         </div>
       </header>
-      <div className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8">
+      <div className="mx-auto grid max-w-375 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8">
         <aside className="admin-sidebar space-y-2">
           <div className="admin-protected mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-emerald-800">
@@ -562,15 +562,21 @@ function AnalyticsDashboard({ incidents, organizations }: { incidents: Firestore
     const resolved = recent.filter(incident => ["resolved", "closed"].includes(incident.status)).length;
     return { recent, status: count("status"), category: count("category"), daily: Object.entries(daily).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value })), resolved, active: recent.filter(incident => !["resolved", "closed", "cancelled"].includes(incident.status)).length, organizations: organizations.length };
   }, [incidents, organizations]);
+  const tooltipStyle = {
+    backgroundColor: "var(--card)",
+    borderColor: "var(--border)",
+    color: "var(--card-foreground)",
+  };
+  const tooltipTextStyle = { color: "var(--card-foreground)" };
   const metricCards = [["Reports · 30 days", analytics.recent.length], ["Active response", analytics.active], ["Resolved", analytics.resolved], ["Resolution rate", `${analytics.recent.length ? Math.round((analytics.resolved / analytics.recent.length) * 100) : 0}%`]];
   return <div className="space-y-6">
     <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="eyebrow">Decision support</p><h2 className="section-title">Advanced analytics</h2><p className="mt-1 text-sm text-muted-foreground">A privacy-safe 30-day view of demand, queue health, and resolution progress.</p></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800">Admin-only · aggregated</span></div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{metricCards.map(([label, value]) => <div key={String(label)} className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="text-3xl font-black">{value}</p><p className="mt-1 text-sm font-semibold text-muted-foreground">{label}</p></div>)}</div>
     <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
-      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Demand trend</p><h3 className="section-title">Reports by day</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={analytics.daily}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div></section>
-      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Workflow health</p><h3 className="section-title">Status mix</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.status} layout="vertical" margin={{ left: 10, right: 12 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="name" width={85} tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div></section>
+      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Demand trend</p><h3 className="section-title">Reports by day</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={analytics.daily}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" stroke="var(--border)" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} /><YAxis allowDecimals={false} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipTextStyle} itemStyle={tooltipTextStyle} /><Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div></section>
+      <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="eyebrow">Workflow health</p><h3 className="section-title">Status mix</h3><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.status} layout="vertical" margin={{ left: 10, right: 12 }}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" allowDecimals={false} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)" }} /><YAxis type="category" dataKey="name" width={85} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipTextStyle} itemStyle={tooltipTextStyle} /><Bar dataKey="value" fill="var(--primary)" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div></section>
     </div>
-    <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Demand profile</p><h3 className="section-title">Categories</h3></div><span className="text-xs font-semibold text-muted-foreground">{analytics.organizations} organizations configured</span></div><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.category}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={55} /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="value" fill="#0e7490" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div></section>
+    <section className="admin-panel rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Demand profile</p><h3 className="section-title">Categories</h3></div><span className="text-xs font-semibold text-muted-foreground">{analytics.organizations} organizations configured</span></div><div className="mt-5 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={analytics.category}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" stroke="var(--border)" tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={55} /><YAxis allowDecimals={false} stroke="var(--border)" tick={{ fill: "var(--muted-foreground)" }} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipTextStyle} itemStyle={tooltipTextStyle} /><Bar dataKey="value" fill="var(--primary)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div></section>
   </div>;
 }
 
@@ -741,7 +747,7 @@ function IncidentTable({
       description="Live incident records. Review reporter biodata, contact details, and keep the status trail current for the person reporting."
     >
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1200px] text-left text-sm">
+        <table className="w-full min-w-300 text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-[0.12em] text-muted-foreground">
               <th className="px-3 py-3">Reference</th>
@@ -781,7 +787,7 @@ function IncidentTable({
                       <p className="font-bold">
                         {incident.reporterName || "Name not provided"}
                       </p>
-                      <p className="mt-1 max-w-[180px] truncate text-xs text-muted-foreground">
+                      <p className="mt-1 max-w-45 truncate text-xs text-muted-foreground">
                         {incident.reporterUid}
                       </p>
                     </div>
@@ -812,7 +818,7 @@ function IncidentTable({
                     )}
                   </div>
                 </td>
-                <td className="max-w-[220px] px-3 py-3 align-top">
+                <td className="max-w-55 px-3 py-3 align-top">
                   <div className="flex items-start gap-1.5">
                     <MapPin
                       size={15}
@@ -932,7 +938,7 @@ function IncidentDetail({
             <p className="mt-3 text-lg font-black">
               {incident.reporterName || "Name not provided"}
             </p>
-            <p className="mt-1 break-all text-xs text-cyan-950/70">
+            <p className="admin-reporter-id mt-1 break-all text-xs text-cyan-950/70">
               Reporter ID: {incident.reporterUid}
             </p>
             <div className="mt-4 grid gap-2 text-sm">
@@ -995,7 +1001,7 @@ function IncidentDetail({
             {incidentLocation(incident)}
           </p>
         </div>
-        <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+        <div className="admin-outreach-panel mt-4 rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
               <Share2 size={17} />
@@ -1025,7 +1031,7 @@ function IncidentDetail({
               href={`https://wa.me/?text=${encodeURIComponent(outreachText)}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center rounded-xl bg-[#25D366] px-3 py-2 text-xs font-black text-white hover:bg-[#1ebe5d]"
+              className="inline-flex items-center rounded-xl bg-[#25D366] px-3 py-2 text-xs font-black text-[#063f3d] hover:bg-[#1ebe5d]"
             >
               WhatsApp
             </a>
@@ -1430,7 +1436,7 @@ function EmptyState({ text }: { text: string }) {
 }
 function SetupState() {
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
+    <div className="admin-entry-state grid min-h-screen place-items-center bg-background px-4">
       <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-card p-8 text-center shadow-sm">
         <BrandLogo
           variant="3d"
@@ -1453,7 +1459,7 @@ function SetupState() {
 }
 function AccessDenied({ onBack }: { onBack: () => void }) {
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
+    <div className="admin-entry-state grid min-h-screen place-items-center bg-background px-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
         <BrandLogo
           variant="3d"

@@ -25,6 +25,7 @@ import EmergencyContactsModal from "@/components/EmergencyContactsModal";
 import CommunityChat from "@/components/CommunityChat";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import FloatingTikTok from "@/components/FloatingTikTok";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import {
   trackPublicIncident,
   type PublicIncidentTracking,
@@ -54,6 +55,7 @@ const HERO_MESSAGES = [
   "Get Help. Get Safe.",
   "Emergency Help, One Step Away",
 ] as const;
+const REPORT_REFERENCE_PATTERN = /^ECR-\d{4}-[A-Z0-9]+$/;
 
 const steps = [
   ["01", "Report", "Choose the emergency type and tell ECR what is happening."],
@@ -86,20 +88,27 @@ function trackingDate(value: unknown) {
 }
 
 function PublicReportTracker() {
-  const initialReference =
+  const suppliedReference =
     typeof window === "undefined"
       ? ""
       : (new URLSearchParams(window.location.search)
           .get("report")
-          ?.toUpperCase() ?? "");
-  const [input, setInput] = useState(initialReference);
+          ?.trim().toUpperCase() ?? "");
+  const initialReference = REPORT_REFERENCE_PATTERN.test(suppliedReference)
+    ? suppliedReference
+    : "";
+  const [input, setInput] = useState(suppliedReference);
   const [reference, setReference] = useState(initialReference);
+  const [trackingAttempt, setTrackingAttempt] = useState(0);
   const [incident, setIncident] = useState<PublicIncidentTracking | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    suppliedReference && !initialReference ? "Enter a valid report ID, for example ECR-2026-E823DD." : ""
+  );
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    setCopied(false);
     if (!reference) return;
     setIncident(null);
     setError("");
@@ -109,34 +118,46 @@ function PublicReportTracker() {
       tracked => {
         setIncident(tracked);
         setLoading(false);
-        if (!tracked)
-          setError("No public tracking record was found for that report ID.");
+        setError(tracked ? "" : "No public tracking record was found for that report ID.");
       },
       () => {
         setLoading(false);
         setError("This report cannot be tracked right now. Please try again.");
       }
     );
-  }, [reference]);
+  }, [reference, trackingAttempt]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 1600);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   function track(event: FormEvent) {
     event.preventDefault();
     const normalized = input.trim().toUpperCase();
-    if (!/^ECR-\d{4}-[A-Z0-9]+$/.test(normalized)) {
+    if (!REPORT_REFERENCE_PATTERN.test(normalized)) {
       setError(
         "Enter the report ID exactly as shown, for example ECR-2026-E823DD."
       );
+      setReference("");
       setIncident(null);
+      setLoading(false);
       return;
     }
     setReference(normalized);
+    setTrackingAttempt(attempt => attempt + 1);
   }
 
   async function copyReference() {
     if (!reference) return;
-    await navigator.clipboard?.writeText(reference);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(reference);
+      setCopied(true);
+    } catch {
+      setError("The report ID could not be copied. Select it above and copy it manually.");
+    }
   }
 
   return (
@@ -251,6 +272,7 @@ function PublicReportTracker() {
 }
 
 export default function Home() {
+  const contentRef = useScrollReveal();
   const [menuOpen, setMenuOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -278,11 +300,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f5f8f7] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/55 shadow-[0_10px_35px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
+      <header className="home-header sticky top-0 z-40 border-b border-white/70 bg-white/55 shadow-[0_10px_35px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <BrandLogo className="w-20 sm:w-24" imageClassName="rounded-xl" />
           <nav
-            className="hidden items-center gap-7 text-sm font-bold text-slate-500 md:flex"
+            className="home-nav hidden items-center gap-7 text-sm font-bold text-slate-500 md:flex"
             aria-label="Main navigation"
           >
             <a
@@ -306,19 +328,19 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setContactsOpen(true)}
-              className="rounded-full bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/20 hover:-translate-y-0.5 hover:bg-rose-800"
+              className="emergency-call-trigger rounded-full bg-rose-700 px-4 py-2 text-xs font-black text-white shadow-lg shadow-rose-900/20 hover:-translate-y-0.5 hover:bg-rose-800"
             >
               SOS
             </button>
             <a
               href="/app"
-              className="rounded-full px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
+              className="home-open-app rounded-full px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
             >
               Open app
             </a>
             <button
               onClick={() => startLogin()}
-              className="rounded-full bg-[#063f3d] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-950/10 hover:-translate-y-0.5 hover:bg-[#075b55]"
+              className="home-sign-in rounded-full bg-[#063f3d] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-950/10 hover:-translate-y-0.5 hover:bg-[#075b55]"
             >
               Sign in
             </button>
@@ -332,7 +354,7 @@ export default function Home() {
           </button>
         </div>
         {menuOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-4 md:hidden">
+          <div className="home-mobile-menu border-t border-slate-100 bg-white px-4 py-4 md:hidden">
             <div className="grid gap-2 text-sm font-bold text-slate-600">
               <button
                 type="button"
@@ -340,7 +362,7 @@ export default function Home() {
                   setContactsOpen(true);
                   setMenuOpen(false);
                 }}
-                className="rounded-xl bg-rose-700 px-3 py-2 text-left font-black text-white"
+                className="emergency-call-trigger rounded-xl bg-rose-700 px-3 py-2 text-left font-black text-white"
               >
                 SOS · Call local services
               </button>
@@ -379,20 +401,20 @@ export default function Home() {
         )}
       </header>
 
-      <main>
+      <main ref={contentRef} className="home-content">
         <section className="hero-surface relative overflow-hidden bg-[#063f3d]">
           <div className="hero-grid absolute inset-0 opacity-40" />
-          <div className="absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full bg-emerald-300/15 blur-3xl" />
+          <div className="absolute -right-24 -top-32 h-112 w-md rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-24">
-            <div className="reveal-up">
+            <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />{" "}
                 Built for safer communities
               </div>
               <h1
                 aria-live="polite"
-                className="max-w-3xl text-5xl font-black leading-[0.98] tracking-[-0.05em] text-white transition-opacity duration-500 sm:text-7xl"
+                className="max-w-3xl text-5xl font-black leading-[0.98] tracking-tighter text-white transition-opacity duration-500 sm:text-7xl"
                 key={HERO_MESSAGES[heroMessageIndex]}
               >
                 {HERO_MESSAGES[heroMessageIndex]}
@@ -423,14 +445,14 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setContactsOpen(true)}
-                  className="inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
+                  className="emergency-call-trigger inline-flex h-13 items-center justify-center gap-3 rounded-2xl bg-rose-700 px-4 text-sm font-black text-white shadow-xl shadow-rose-950/25 transition hover:-translate-y-1 hover:bg-rose-800 sm:px-5"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
+                  <span className="emergency-call-badge grid h-9 w-9 place-items-center rounded-full border border-rose-300/40 bg-rose-950/40 text-[10px] font-black tracking-wide">
                     SOS
                   </span>
                   <span className="text-left">
                     <span className="block">Emergency call</span>
-                    <span className="block text-[11px] font-semibold text-rose-100">
+                    <span className="emergency-call-caption block text-[11px] font-semibold text-rose-100">
                       Choose an official service
                     </span>
                   </span>
@@ -448,10 +470,10 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            <div className="relative min-h-[420px]">
+            <div className="relative min-h-105">
               <div className="beacon-halo absolute right-4 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-emerald-200/20" />
-              <div className="glass-card relative z-10 rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
-                <div className="rounded-[1.5rem] bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
+              <div className="hero-promise-shell glass-card relative z-10 rounded-4xl border border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl">
+                <div className="hero-promise-panel rounded-3xl bg-[#f4faf8]/95 p-6 shadow-inner shadow-white sm:p-8 sm:pr-40">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
@@ -470,9 +492,9 @@ export default function Home() {
                     {pillars.map(({ icon: Icon, title, text }) => (
                       <div
                         key={title}
-                        className="flex gap-4 rounded-2xl border border-emerald-100 bg-white/75 p-4"
+                        className="hero-pillar flex gap-4 rounded-2xl border border-emerald-100 bg-white/75 p-4"
                       >
-                        <span className="icon-orb grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                        <span className="hero-pillar-icon icon-orb grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
                           <Icon size={18} />
                         </span>
                         <div>
@@ -501,21 +523,21 @@ export default function Home() {
 
         <section className="border-b border-slate-200/80 bg-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8">
-            <div>
-              <p className="text-3xl font-black text-[#063f3d]">24/7</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+            <div data-scroll-reveal="">
+              <p className="text-3xl font-black text-primary">24/7</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Response-ready mindset
               </p>
             </div>
-            <div>
-              <p className="text-3xl font-black text-[#063f3d]">1 clear</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+            <div data-scroll-reveal="" data-scroll-delay="1">
+              <p className="text-3xl font-black text-primary">1 clear</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Report-to-resolution thread
               </p>
             </div>
-            <div>
-              <p className="text-3xl font-black text-[#063f3d]">Local first</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+            <div data-scroll-reveal="" data-scroll-delay="2">
+              <p className="text-3xl font-black text-primary">Local first</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
                 Communities and agencies together
               </p>
             </div>
@@ -526,9 +548,9 @@ export default function Home() {
 
         <section
           id="how-it-works"
-          className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+          className="mx-auto max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
         >
-          <div className="max-w-2xl">
+          <div data-scroll-reveal="" className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
               A simple response loop
             </p>
@@ -544,6 +566,8 @@ export default function Home() {
             {steps.map(([number, title, text], index) => (
               <div
                 key={number}
+                data-scroll-reveal=""
+                data-scroll-delay={index}
                 className="glass-tile rounded-3xl border border-slate-200/80 bg-white/80 p-5"
               >
                 <span
@@ -558,9 +582,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="network" className="bg-[#eaf6f1]">
+        <section id="network" className="scroll-mt-24 bg-[#eaf6f1]">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-24">
-            <div>
+            <div data-scroll-reveal="">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
                 A coordinated network
               </p>
@@ -574,13 +598,16 @@ export default function Home() {
               </p>
               <a
                 href="/app"
-                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]"
+                className="home-primary-action mt-7 inline-flex items-center gap-2 rounded-xl bg-[#063f3d] px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-[#075b55]"
               >
                 Explore the reporting flow <ArrowRight size={16} />
               </a>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <UsersRound className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For communities</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -588,7 +615,11 @@ export default function Home() {
                   as the status changes.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="1"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <ShieldCheck className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For agencies</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -596,7 +627,11 @@ export default function Home() {
                   context, and a traceable audit trail.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="2"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <Clock3 className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For responders</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -604,7 +639,11 @@ export default function Home() {
                   reporting close to the loop.
                 </p>
               </div>
-              <div className="glass-surface rounded-3xl p-6 shadow-sm">
+              <div
+                data-scroll-reveal=""
+                data-scroll-delay="3"
+                className="glass-surface rounded-3xl p-6 shadow-sm"
+              >
                 <LockKeyhole className="text-emerald-700" size={24} />
                 <h3 className="mt-6 text-lg font-black">For trust</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -620,7 +659,10 @@ export default function Home() {
           id="trust"
           className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
         >
-          <div className="rounded-[2rem] bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10">
+          <div
+            data-scroll-reveal=""
+            className="rounded-4xl bg-[#063f3d] px-6 py-10 text-center shadow-2xl shadow-emerald-950/10 sm:px-10"
+          >
             <LockKeyhole className="mx-auto text-emerald-300" size={28} />
             <h2 className="mt-5 text-3xl font-black tracking-tight text-white sm:text-4xl">
               Safety is part of the product, not a footer note.
@@ -633,7 +675,7 @@ export default function Home() {
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a
                 href="/app"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]"
+                className="home-primary-action inline-flex items-center gap-2 rounded-xl bg-[#13b981] px-5 py-3 text-sm font-black text-[#022c2b] hover:-translate-y-0.5 hover:bg-[#34d399]"
               >
                 Start a report <ArrowRight size={16} />
               </a>
@@ -641,7 +683,7 @@ export default function Home() {
                 href="https://whatsapp.com/channel/0029VbEChke5a246BfQBdw0G"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-white/15"
+                className="home-secondary-action inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white hover:-translate-y-0.5 hover:bg-white/15"
               >
                 <MessageCircle size={16} /> Join WhatsApp updates
               </a>
@@ -721,7 +763,7 @@ export default function Home() {
       </footer>
       {privacyOpen && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
           role="presentation"
           onMouseDown={event => {
             if (event.target === event.currentTarget) setPrivacyOpen(false);
@@ -731,7 +773,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="privacy-title"
-            className="glass-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] p-6 shadow-2xl sm:p-8"
+            className="home-privacy-dialog glass-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-4xl p-6 shadow-2xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-5">
               <div>
@@ -775,7 +817,7 @@ export default function Home() {
                     setPrivacyOpen(false);
                     setContactsOpen(true);
                   }}
-                  className="mt-3 inline-flex rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"
+                  className="emergency-call-trigger mt-3 inline-flex rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"
                 >
                   Open local contacts
                 </button>

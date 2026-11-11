@@ -68,16 +68,16 @@ export default function IncidentPhotoPicker({
   const totalSize = photos.reduce((total, photo) => total + photo.size, 0);
 
   return (
-    <section className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4" aria-label="Optional incident photos">
+    <section className="incident-photo-picker rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4" aria-label="Optional local photo drafts">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-cyan-800"><Images size={18} /></span>
         <div>
-          <p className="text-sm font-black text-cyan-950">Add photos (optional for every report)</p>
-          <p className="mt-1 text-xs font-semibold text-cyan-950/80">You can skip photos and send any report without an image.</p>
-          <p className="mt-1 text-xs leading-5 text-cyan-900/75">
+          <p className="photo-draft-title text-sm font-black text-cyan-950">Keep local photo drafts (optional)</p>
+          <p className="photo-draft-copy mt-1 text-xs font-semibold text-cyan-950/80">Photos are not sent with your report or shared with responders.</p>
+          <p className="photo-draft-copy mt-1 text-xs leading-5 text-cyan-900/75">
             {category === "missing_person"
-              ? "A clear, recent photo of the missing person can help identify them. You can also add a safe scene or landmark photo."
-              : "A safe scene or landmark photo can help responders understand what is happening."}
+              ? "Keep a clear, recent identifying photo for your records. Share it directly with the appropriate authority when safe."
+              : "Keep a safe scene or landmark photo for your own records."}
           </p>
         </div>
       </div>
@@ -96,10 +96,10 @@ export default function IncidentPhotoPicker({
       <input ref={cameraInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" aria-label="Take an incident photo" onChange={event => { acceptFiles(event.currentTarget.files, nextKind.current); event.currentTarget.value = ""; }} />
       <input ref={galleryInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" aria-label="Choose incident photos" onChange={event => { acceptFiles(event.currentTarget.files, nextKind.current); event.currentTarget.value = ""; }} />
 
-      <p className="mt-2 text-[11px] leading-5 text-slate-500">Up to {MAX_INCIDENT_PHOTOS} JPEG, PNG, or WebP images. Max 8 MB each / 16 MB total. Photos stay in this browser in the local prototype and are not synced to other devices.</p>
-      <p className="mt-1 text-[11px] leading-5 text-amber-900"><strong>Safety:</strong> Don’t approach danger or delay calling emergency services to take a photo. Avoid sharing graphic images or photos of uninvolved people.</p>
+      <p className="mt-2 text-[11px] leading-5 text-slate-500">Up to {MAX_INCIDENT_PHOTOS} JPEG, PNG, or WebP images. Max 8 MB each / 16 MB total. Drafts stay in this browser until you remove them or clear browser data. You can send a report without photos.</p>
+      <p className="mt-1 text-[11px] leading-5 text-slate-600"><strong>Safety:</strong> Don’t approach danger or delay calling emergency services to take a photo. Avoid sharing graphic images or photos of uninvolved people.</p>
 
-      {photos.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photos.map(photo => <div key={photo.id} className="overflow-hidden rounded-xl border border-cyan-100 bg-white"><img src={previews[photo.id]} alt={`Preview: ${photoKindLabel(photo.kind)}`} className="aspect-[4/3] w-full object-cover" /><div className="flex items-center justify-between gap-2 px-2.5 py-2"><span className="min-w-0 text-[10px] font-bold leading-4 text-slate-700">{photoKindLabel(photo.kind)}<span className="block font-normal text-slate-400">{(photo.size / (1024 * 1024)).toFixed(1)} MB</span></span><button type="button" onClick={() => onChange(photos.filter(item => item.id !== photo.id))} className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-700" aria-label={`Remove ${photoKindLabel(photo.kind)}`}><Trash2 size={15} /></button></div></div>)}</div>}
+      {photos.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photos.map(photo => <div key={photo.id} className="overflow-hidden rounded-xl border border-cyan-100 bg-white"><img src={previews[photo.id]} alt={`Preview: ${photoKindLabel(photo.kind)}`} className="aspect-[4/3] w-full object-cover" /><div className="flex items-center justify-between gap-2 px-2.5 py-2"><span className="min-w-0 text-[10px] font-bold leading-4 text-slate-700">{photoKindLabel(photo.kind)}<span className="block font-normal text-slate-400">{(photo.size / (1024 * 1024)).toFixed(1)} MB</span></span><button type="button" onClick={() => onChange(photos.filter(item => item.id !== photo.id))} className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-700" aria-label={`Remove ${photoKindLabel(photo.kind)}`}><Trash2 size={15} /></button></div><a href={previews[photo.id]} download={photo.file.name} className="block px-2.5 pb-2 text-xs font-bold text-cyan-950 underline" aria-label={`Download ${photoKindLabel(photo.kind)} draft`}>Download draft</a></div>)}</div>}
       <div className="mt-3 flex justify-between text-[11px] font-semibold text-slate-500"><span>{photos.length}/{MAX_INCIDENT_PHOTOS} photos</span><span>{(totalSize / (1024 * 1024)).toFixed(1)} MB / {(MAX_INCIDENT_PHOTO_TOTAL_BYTES / (1024 * 1024)).toFixed(0)} MB</span></div>
     </section>
   );

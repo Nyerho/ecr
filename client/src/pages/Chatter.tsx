@@ -228,7 +228,7 @@ export default function Chatter() {
   if (!isAuthenticated || !user) return null;
 
   return (
-    <main className="min-h-screen bg-[#f5f8f7] text-slate-950">
+    <main className="chatter-shell min-h-screen bg-[#f5f8f7] text-slate-950">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/80 shadow-[0_12px_40px_rgba(6,63,61,0.06)] backdrop-blur-2xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -300,7 +300,7 @@ export default function Chatter() {
       <div className="mx-auto grid max-w-5xl gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:px-8">
         <section className="min-w-0 space-y-6">
           {/* Post Creation Box */}
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="chatter-compose rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
@@ -455,7 +455,7 @@ export default function Chatter() {
           </div>
 
           {/* Feed Filter & Search Controls */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+          <div className="chatter-filters rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {/* Search input */}
               <div className="relative flex-1">
@@ -563,7 +563,7 @@ export default function Chatter() {
                 />
               ))
             ) : (
-              <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-white p-10 text-center">
+              <div className="chatter-empty rounded-[1.75rem] border border-dashed border-slate-300 bg-white p-10 text-center">
                 <MessageCircleHeart className="mx-auto text-slate-300" size={32} />
                 <p className="mt-3 text-sm font-black text-slate-700">No alerts match your filter</p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -644,7 +644,7 @@ export default function Chatter() {
       {/* Moderation Reporting Dialog */}
       {reportingMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="chatter-report-dialog w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-rose-100 text-rose-700">
@@ -753,7 +753,7 @@ const urgencyMeta = {
 
   return (
     <article
-      className={`rounded-[1.6rem] border transition shadow-sm p-4 sm:p-5 ${
+      className={`chatter-message rounded-[1.6rem] border transition shadow-sm p-4 sm:p-5 ${
         isResolved
           ? "border-slate-200 bg-white/70"
           : message.category === "need_help"

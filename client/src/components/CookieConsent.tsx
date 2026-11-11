@@ -35,7 +35,7 @@ export default function CookieConsent() {
       role="dialog"
       aria-modal="false"
       aria-labelledby="cookie-consent-title"
-      className="fixed inset-x-3 bottom-3 z-[80] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-w-xl sm:p-5"
+      className="cookie-consent fixed inset-x-3 bottom-3 z-[80] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-w-xl sm:p-5"
     >
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">

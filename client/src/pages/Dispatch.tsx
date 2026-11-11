@@ -142,8 +142,8 @@ export default function Dispatch() {
 
   if (!active) {
     return (
-      <main className="min-h-screen bg-[#f5f8f7] px-4 py-10 text-slate-950">
-        <div className="mx-auto max-w-lg rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-xl">
+      <main className="dispatch-shell min-h-screen bg-[#f5f8f7] px-4 py-10 text-slate-950">
+        <div className="dispatch-entry-card mx-auto max-w-lg rounded-4xl border border-slate-200 bg-white p-8 text-center shadow-xl">
           <BrandLogo
             variant="3d"
             className="mx-auto w-40"
@@ -181,8 +181,8 @@ export default function Dispatch() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f8f7] text-slate-950">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+    <main className="dispatch-shell min-h-screen bg-[#f5f8f7] text-slate-950">
+      <header className="dispatch-header border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <BrandLogo className="w-16" imageClassName="rounded-lg" />
@@ -235,7 +235,7 @@ export default function Dispatch() {
                 {filtered.length} visible
               </span>
             </div>
-            <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-4">
+            <div className="dispatch-filters mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-4">
               <label className="text-xs font-bold text-slate-500">
                 Status
                 <select
@@ -310,7 +310,7 @@ export default function Dispatch() {
                   <button
                     key={incident.id}
                     onClick={() => setSelectedId(incident.id)}
-                    className={`w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedId === incident.id ? "border-emerald-400 ring-2 ring-emerald-100" : "border-slate-200"}`}
+                    className={`dispatch-incident-card w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedId === incident.id ? "border-emerald-400 ring-2 ring-emerald-100" : "border-slate-200"}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -319,12 +319,12 @@ export default function Dispatch() {
                             {incident.category.replaceAll("_", " ")}
                           </span>
                           <span
-                            className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${incident.priority === "critical" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}
+                            className={`dispatch-priority rounded-full px-2 py-1 text-[10px] font-black uppercase ${incident.priority === "critical" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}
                           >
                             {incident.priority}
                           </span>
                           {Boolean(incident.photos?.length) && (
-                            <span className="rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-black text-cyan-800">
+                            <span className="dispatch-photo-badge rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-black text-cyan-800">
                               {incident.photos?.length} photo
                               {incident.photos?.length === 1 ? "" : "s"}
                             </span>
@@ -335,7 +335,7 @@ export default function Dispatch() {
                           {formatTime(incident.createdAt)}
                         </p>
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-700">
+                      <span className="dispatch-status-badge rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase text-emerald-700">
                         {statusLabels[incident.status] ?? incident.status}
                       </span>
                     </div>
@@ -349,7 +349,7 @@ export default function Dispatch() {
                   </button>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+                <div className="dispatch-empty rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
                   <Filter className="mx-auto text-slate-300" size={24} />
                   <p className="mt-3 text-sm font-black">
                     No incidents match these filters
@@ -364,7 +364,7 @@ export default function Dispatch() {
           </section>
           <section className="min-w-0">
             {selected ? (
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="dispatch-detail rounded-4xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
@@ -380,14 +380,14 @@ export default function Dispatch() {
                   </div>
                   <button
                     onClick={() => setSelectedId(null)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"
+                    className="dispatch-close rounded-xl p-2 text-slate-400 hover:bg-slate-100"
                     aria-label="Close incident detail"
                   >
                     <X size={19} />
                   </button>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="dispatch-subpanel rounded-2xl bg-slate-50 p-4">
                     <p className="text-xs font-black uppercase tracking-wider text-slate-400">
                       Description
                     </p>
@@ -395,7 +395,7 @@ export default function Dispatch() {
                       {selected.description}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="dispatch-subpanel rounded-2xl bg-slate-50 p-4">
                     <p className="text-xs font-black uppercase tracking-wider text-slate-400">
                       Location
                     </p>
@@ -425,7 +425,7 @@ export default function Dispatch() {
                           action: `Priority set to ${event.target.value}`,
                         })
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold"
+                      className="dispatch-control mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold"
                     >
                       <option value="critical">Critical</option>
                       <option value="high">High</option>
@@ -447,7 +447,7 @@ export default function Dispatch() {
                             : "Route cleared",
                         })
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold"
+                      className="dispatch-control mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold"
                     >
                       <option value="">Unassigned</option>
                       {getLocalOrganizations().map(org => (
@@ -497,7 +497,7 @@ export default function Dispatch() {
                     Advance status
                   </button>
                 </div>
-                <div className="mt-7 border-t border-slate-100 pt-5">
+                <div className="dispatch-timeline mt-7 border-t border-slate-100 pt-5">
                   <div className="flex items-center gap-2">
                     <Activity size={17} className="text-emerald-700" />
                     <h3 className="text-sm font-black">Audit timeline</h3>
@@ -530,7 +530,7 @@ export default function Dispatch() {
                 </div>
               </div>
             ) : (
-              <div className="grid min-h-[420px] place-items-center rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center">
+              <div className="grid min-h-[420px] place-items-center rounded-4xl border border-dashed border-slate-300 bg-white p-10 text-center">
                 <Siren className="text-slate-300" size={32} />
                 <p className="mt-4 text-sm font-black">
                   Select an incident to inspect its details

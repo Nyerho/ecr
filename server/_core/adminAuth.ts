@@ -11,10 +11,10 @@ function signature(payload: string) {
 }
 
 export function verifyAdminPassword(password: string) {
-  if (!ENV.adminPassword || password.length !== ENV.adminPassword.length) return false;
+  if (!ENV.adminPassword) return false;
   const supplied = Buffer.from(password);
   const expected = Buffer.from(ENV.adminPassword);
-  return timingSafeEqual(supplied, expected);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
 export function createAdminUnlockToken(userId: number) {
